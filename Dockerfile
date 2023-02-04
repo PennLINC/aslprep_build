@@ -59,12 +59,10 @@ RUN apt-get update && \
       nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install latest pandoc
-RUN curl -o pandoc-2.2.2.1-1-amd64.deb -sSL "https://github.com/jgm/pandoc/releases/download/2.2.2.1/pandoc-2.2.2.1-1-amd64.deb" && \
-    dpkg -i pandoc-2.2.2.1-1-amd64.deb && \
-    rm pandoc-2.2.2.1-1-amd64.deb
+ENV OS="Linux" \
+    FIX_VERTEX_AREA=""
 
-# Install freesurfer
+# Install FreeSurfer
 RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.1/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.1.tar.gz | tar zxv --no-same-owner -C /opt \
     --exclude='freesurfer/trctrain' \
     --exclude='freesurfer/subjects/fsaverage_sym' \
@@ -78,26 +76,6 @@ RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.1/frees
     --exclude='freesurfer/lib/cuda' \
     --exclude='freesurfer/lib/qt'
 
-  ENV FSLDIR="/opt/fsl-6.0.3" \
-      PATH="/opt/fsl-6.0.3/bin:$PATH"
-  RUN echo "Downloading FSL ..." \
-      && mkdir -p /opt/fsl-6.0.3 \
-      && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.3-centos6_64.tar.gz \
-      | tar -xz -C /opt/fsl-6.0.3 --strip-components 1 \
-      --exclude='fsl/doc' \
-      --exclude='fsl/data/atlases' \
-      --exclude='fsl/data/possum' \
-      --exclude='fsl/src' \
-      --exclude='fsl/extras/src' \
-      --exclude='fsl/bin/fslview*' \
-      --exclude='fsl/bin/FSLeyes' \
-      && echo "Installing FSL conda environment ..." \
-      && sed -i -e "/fsleyes/d" -e "/wxpython/d" \
-         ${FSLDIR}/etc/fslconf/fslpython_environment.yml \
-      && bash /opt/fsl-6.0.3/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.3 \
-      && find ${FSLDIR}/fslpython/envs/fslpython/lib/python3.7/site-packages/ -type d -name "tests"  -print0 | xargs -0 rm -r \
-      && ${FSLDIR}/fslpython/bin/conda clean --all
-
 ENV FREESURFER_HOME=/opt/freesurfer \
     SUBJECTS_DIR=/opt/freesurfer/subjects \
     FUNCTIONALS_DIR=/opt/freesurfer/sessions \
@@ -108,9 +86,32 @@ ENV FREESURFER_HOME=/opt/freesurfer \
     MINC_LIB_DIR=/opt/freesurfer/mni/lib \
     MNI_DATAPATH=/opt/freesurfer/mni/data \
     FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
+
 ENV PERL5LIB=$MINC_LIB_DIR/perl5/5.8.5 \
     MNI_PERL5LIB=$MINC_LIB_DIR/perl5/5.8.5 \
     PATH=$FREESURFER_HOME/bin:$FSFAST_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH
+
+# Install FSL
+ENV FSLDIR="/opt/fsl-6.0.3" \
+    PATH="/opt/fsl-6.0.3/bin:$PATH"
+
+RUN echo "Downloading FSL ..." \
+    && mkdir -p /opt/fsl-6.0.3 \
+    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.3-centos6_64.tar.gz \
+    | tar -xz -C /opt/fsl-6.0.3 --strip-components 1 \
+    --exclude='fsl/doc' \
+    --exclude='fsl/data/atlases' \
+    --exclude='fsl/data/possum' \
+    --exclude='fsl/src' \
+    --exclude='fsl/extras/src' \
+    --exclude='fsl/bin/fslview*' \
+    --exclude='fsl/bin/FSLeyes' \
+    && echo "Installing FSL conda environment ..." \
+    && sed -i -e "/fsleyes/d" -e "/wxpython/d" \
+        ${FSLDIR}/etc/fslconf/fslpython_environment.yml \
+    && bash /opt/fsl-6.0.3/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.3 \
+    && find ${FSLDIR}/fslpython/envs/fslpython/lib/python3.7/site-packages/ -type d -name "tests"  -print0 | xargs -0 rm -r \
+    && ${FSLDIR}/fslpython/bin/conda clean --all
 
 # Installing Neurodebian packages (FSL, AFNI, git)
 RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
@@ -123,33 +124,7 @@ RUN apt-get update && \
                     git-annex-standalone && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Installing ANTs latest from source
-ARG ANTS_SHA=e00e8164d7a92f048e5d06e388a15c1ee8e889c4
-ADD https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh /cmake-3.11.4-Linux-x86_64.sh
-ENV ANTSPATH="/opt/ants-latest/bin" \
-    PATH="/opt/ants-latest/bin:$PATH" \
-    LD_LIBRARY_PATH="/opt/ants-latest/lib:$LD_LIBRARY_PATH"
-RUN mkdir /opt/cmake \
-  && sh /cmake-3.11.4-Linux-x86_64.sh --prefix=/opt/cmake --skip-license \
-  && ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake \
-  && apt-get update -qq \
-    && mkdir /tmp/ants \
-    && cd /tmp \
-    && git clone https://github.com/ANTsX/ANTs.git \
-    && mv ANTs /tmp/ants/source \
-    && cd /tmp/ants/source \
-    && git checkout ${ANTS_SHA} \
-    && mkdir -p /tmp/ants/build \
-    && cd /tmp/ants/build \
-    && mkdir -p /opt/ants-latest \
-    && git config --global url."https://".insteadOf git:// \
-    && cmake -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/opt/ants-latest /tmp/ants/source \
-    && make -j2 \
-    && cd ANTS-build \
-    && make install \
-    && rm -rf /tmp/ants
-
-# Installing SVGO
+# Install Convert3D
 ENV C3DPATH="/opt/convert3d-nightly" \
     PATH="/opt/convert3d-nightly/bin:$PATH"
 RUN echo "Downloading Convert3D ..." \
@@ -157,16 +132,7 @@ RUN echo "Downloading Convert3D ..." \
     && curl -fsSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/Nightly/c3d-nightly-Linux-x86_64.tar.gz/download \
     | tar -xz -C /opt/convert3d-nightly --strip-components 1
 
-RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-4.5.12-Linux-x86_64.sh && \
-    bash Miniconda3-4.5.12-Linux-x86_64.sh -b -p /usr/local/miniconda && \
-    rm Miniconda3-4.5.12-Linux-x86_64.sh
-
-ENV PATH=/usr/local/miniconda/bin:$PATH \
-    CPATH="/usr/local/miniconda/include/:$CPATH" \
-    LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8 \
-    PYTHONNOUSERSITE=1
-
+# Install AFNI
 ENV AFNI_INSTALLDIR=/usr/lib/afni \
     PATH=${PATH}:/usr/lib/afni/bin \
     AFNI_PLUGINPATH=/usr/lib/afni/plugins \
@@ -177,50 +143,74 @@ ENV AFNI_INSTALLDIR=/usr/lib/afni \
     MRTRIX_NTHREADS=1 \
     IS_DOCKER_8395080871=1
 
-#RUN curl -sL https://deb.nodesource.com/setup_12.x | bash -
-#RUN apt-get install -y nodejs
-##RUN npm install -g npm
-#RUN npm install -g svgo
+# Installing ANTs latest from source
+ARG ANTS_SHA=e00e8164d7a92f048e5d06e388a15c1ee8e889c4
+ADD https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh /cmake-3.11.4-Linux-x86_64.sh
+ENV ANTSPATH="/opt/ants-latest/bin" \
+    PATH="/opt/ants-latest/bin:$PATH" \
+    LD_LIBRARY_PATH="/opt/ants-latest/lib:$LD_LIBRARY_PATH"
+RUN mkdir /opt/cmake \
+    && sh /cmake-3.11.4-Linux-x86_64.sh --prefix=/opt/cmake --skip-license \
+    && ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake \
+    && apt-get update -qq \
+        && mkdir /tmp/ants \
+        && cd /tmp \
+        && git clone https://github.com/ANTsX/ANTs.git \
+        && mv ANTs /tmp/ants/source \
+        && cd /tmp/ants/source \
+        && git checkout ${ANTS_SHA} \
+        && mkdir -p /tmp/ants/build \
+        && cd /tmp/ants/build \
+        && mkdir -p /opt/ants-latest \
+        && git config --global url."https://".insteadOf git:// \
+        && cmake -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/opt/ants-latest /tmp/ants/source \
+        && make -j2 \
+        && cd ANTS-build \
+        && make install \
+        && rm -rf /tmp/ants
+
+# Install SVGO
 RUN curl -sL https://deb.nodesource.com/setup_12.x  | bash -
 RUN apt-get -y install nodejs
 RUN npm install -g svgo
 
-# Installing bids-validator
+# Install bids-validator
 RUN npm install -g bids-validator@1.8.4
 
+# Install miniconda
+RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-4.5.12-Linux-x86_64.sh && \
+    bash Miniconda3-4.5.12-Linux-x86_64.sh -b -p /usr/local/miniconda && \
+    rm Miniconda3-4.5.12-Linux-x86_64.sh
+
+# Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
+ENV PATH="/usr/local/miniconda/bin:$PATH" \
+    CPATH="/usr/local/miniconda/include:$CPATH" \
+    LANG="C.UTF-8" \
+    LC_ALL="C.UTF-8" \
+    PYTHONNOUSERSITE=1
+
+# Install Python dependencies
 RUN conda install -y \
-        python=3.7.4 \
-        pip=19.1 \
-        mkl=2018.0.3 \
-        mkl-service \
-        numpy=1.16.5 \
-        scipy=1.3.0 \
-        scikit-learn \
-        matplotlib \
-        pandas=0.23.4 \
+        python=3.8 \
+        pip=21.0 \
+        mkl=2021.2 \
+        mkl-service=2.3 \
         libxml2=2.9.8 \
         libxslt=1.1.32 \
         graphviz=2.40.1 \
-        traits=4.6.0 \
-        zlib; sync && \
+        zlib; \
+        sync && \
     chmod -R a+rX /usr/local/miniconda; sync && \
     chmod +x /usr/local/miniconda/bin/*; sync && \
     conda build purge-all; sync && \
     conda clean -tipsy && sync
-
-RUN curl -sL https://deb.nodesource.com/setup_10.x | bash -
-RUN apt-get install -y nodejs
-
-RUN npm install -g svgo
-
-# Installing bids-validator
-RUN npm install -g bids-validator@1.8.4
 
 # Unless otherwise specified each process should only use one thread - nipype
 # will handle parallelization
 ENV MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1
 
+# Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users aslprep
 WORKDIR /home/aslprep
 ENV HOME="/home/aslprep"
@@ -232,49 +222,34 @@ RUN python -c "from matplotlib import font_manager" && \
 # Precaching atlases
 COPY setup.cfg aslprep-setup.cfg
 RUN pip install --no-cache-dir "$( grep templateflow aslprep-setup.cfg | xargs )" && \
-    python -c "from templateflow import api as tfapi; \
-               tfapi.get('MNI152NLin6Asym', atlas=None, resolution=[1, 2], \
-                         desc=None, extension=['.nii', '.nii.gz']); \
-               tfapi.get('MNI152NLin6Asym', atlas=None, resolution=[1, 2], \
-                         desc='brain', extension=['.nii', '.nii.gz']); \
-               tfapi.get('MNI152NLin2009cAsym', atlas=None, resolution=[1, 2],\
-                                        extension=['.nii', '.nii.gz']); \
-               tfapi.get('OASIS30ANTs', extension=['.nii', '.nii.gz'])" && \
+    python -c "\
+        from templateflow import api as tfapi; \
+        tfapi.get(
+            'MNI152NLin6Asym', atlas=None, resolution=[1, 2], \
+            desc=None, extension=['.nii', '.nii.gz'],
+        ); \
+        tfapi.get(
+            'MNI152NLin6Asym', atlas=None, resolution=[1, 2], \
+            desc='brain', extension=['.nii', '.nii.gz'],
+        ); \
+        tfapi.get(
+            'MNI152NLin2009cAsym', atlas=None, resolution=[1, 2],\
+            extension=['.nii', '.nii.gz'],
+        ); \
+        tfapi.get('OASIS30ANTs', extension=['.nii', '.nii.gz']); \
+    " && \
     rm aslprep-setup.cfg && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
-# Installing ASLPREP
-COPY . /src/aslprep
-
-#ARG VERSION
-
-# Force static versioning within container
-#RUN echo "${VERSION}" > /src/aslprep/aslprep/VERSION && \
-    #echo "include aslprep/VERSION" >> /src/aslprep/MANIFEST.in && \
-RUN pip install --no-cache-dir "/src/aslprep[all]"
-
-RUN install -m 0755 \
-    /src/aslprep/scripts/generate_reference_mask.py \
-    /usr/local/bin/generate_reference_mask
+# Install pandoc
+RUN curl -o pandoc-2.2.2.1-1-amd64.deb -sSL "https://github.com/jgm/pandoc/releases/download/2.2.2.1/pandoc-2.2.2.1-1-amd64.deb" && \
+    dpkg -i pandoc-2.2.2.1-1-amd64.deb && \
+    rm pandoc-2.2.2.1-1-amd64.deb
 
 RUN find $HOME -type d -exec chmod go=u {} + && \
     find $HOME -type f -exec chmod go=u {} + && \
     rm -rf $HOME/.npm $HOME/.conda $HOME/.empty
 
-#ENV IS_DOCKER_8395080871=1
-
 RUN ldconfig
 WORKDIR /tmp/
-ENTRYPOINT ["/usr/local/miniconda/bin/aslprep"]
-
-ARG BUILD_DATE
-ARG VCS_REF
-ARG VERSION
-LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.name="ASLPrep" \
-      org.label-schema.description="ASLPrep - robust ASL preprocessing tool" \
-      org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.vcs-url="https://github.com/PennLINC/aslprep" \
-      org.label-schema.version=$VERSION \
-      org.label-schema.schema-version="1.0"
