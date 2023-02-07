@@ -26,8 +26,6 @@ RUN apt-get update && \
         libfontconfig1 \
         libfreetype6 \
         libgl1-mesa-dev \
-        libgl1-mesa-dev \
-        libglu1-mesa-dev \
         libglu1-mesa-dev \
         libgomp1 \
         libice6 \
@@ -52,11 +50,10 @@ RUN apt-get update && \
         xvfb \
         zlib1g \
         zlib1g-dev \
-        zlib1g-dev \
         && \
     curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
     apt-get install -y --no-install-recommends \
-      nodejs && \
+        nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ENV OS="Linux" \
@@ -64,32 +61,39 @@ ENV OS="Linux" \
 
 # Install FreeSurfer
 RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.1/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.1.tar.gz | tar zxv --no-same-owner -C /opt \
-    --exclude='freesurfer/trctrain' \
+    --exclude='freesurfer/diffusion' \
+    --exclude='freesurfer/docs' \
+    --exclude='freesurfer/fsfast' \
+    --exclude='freesurfer/lib/cuda' \
+    --exclude='freesurfer/lib/qt' \
+    --exclude='freesurfer/matlab' \
+    --exclude='freesurfer/mni/share/man' \
     --exclude='freesurfer/subjects/fsaverage_sym' \
     --exclude='freesurfer/subjects/fsaverage3' \
     --exclude='freesurfer/subjects/fsaverage4' \
     --exclude='freesurfer/subjects/cvs_avg35' \
     --exclude='freesurfer/subjects/cvs_avg35_inMNI152' \
     --exclude='freesurfer/subjects/bert' \
+    --exclude='freesurfer/subjects/lh.EC_average' \
+    --exclude='freesurfer/subjects/rh.EC_average' \
+    --exclude='freesurfer/subjects/sample-*.mgz' \
     --exclude='freesurfer/subjects/V1_average' \
-    --exclude='freesurfer/average/mult-comp-cor' \
-    --exclude='freesurfer/lib/cuda' \
-    --exclude='freesurfer/lib/qt'
+    --exclude='freesurfer/trctrain'
 
-ENV FREESURFER_HOME=/opt/freesurfer \
-    SUBJECTS_DIR=/opt/freesurfer/subjects \
-    FUNCTIONALS_DIR=/opt/freesurfer/sessions \
-    MNI_DIR=/opt/freesurfer/mni \
-    LOCAL_DIR=/opt/freesurfer/local \
-    FSFAST_HOME=/opt/freesurfer/fsfast \
-    MINC_BIN_DIR=/opt/freesurfer/mni/bin \
-    MINC_LIB_DIR=/opt/freesurfer/mni/lib \
-    MNI_DATAPATH=/opt/freesurfer/mni/data \
-    FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
+ENV FSF_OUTPUT_FORMAT="nii.gz" \
+    FREESURFER_HOME="/opt/freesurfer"
 
-ENV PERL5LIB=$MINC_LIB_DIR/perl5/5.8.5 \
-    MNI_PERL5LIB=$MINC_LIB_DIR/perl5/5.8.5 \
-    PATH=$FREESURFER_HOME/bin:$FSFAST_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH
+ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
+    FUNCTIONALS_DIR="$FREESURFER_HOME/sessions" \
+    MNI_DIR="$FREESURFER_HOME/mni" \
+    LOCAL_DIR="$FREESURFER_HOME/local" \
+    MINC_BIN_DIR="$FREESURFER_HOME/mni/bin" \
+    MINC_LIB_DIR="$FREESURFER_HOME/mni/lib" \
+    MNI_DATAPATH="$FREESURFER_HOME/mni/data"
+
+ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
+    MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
+    PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
 
 # Install FSL
 ENV FSLDIR="/opt/fsl-6.0.3" \
@@ -113,61 +117,40 @@ RUN echo "Downloading FSL ..." \
     && find ${FSLDIR}/fslpython/envs/fslpython/lib/python3.7/site-packages/ -type d -name "tests"  -print0 | xargs -0 rm -r \
     && ${FSLDIR}/fslpython/bin/conda clean --all
 
-# Installing Neurodebian packages (FSL, AFNI, git)
+# Install Neurodebian packages (AFNI, Connectome Workbench, git)
 RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
     apt-key add /usr/local/etc/neurodebian.gpg && \
     (apt-key adv --refresh-keys --keyserver hkp://ha.pool.sks-keyservers.net 0xA5D32F012649A5A9 || true)
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-                    afni=16.2.07~dfsg.1-5~nd16.04+1 \
-                    git-annex-standalone && \
+        afni=18.0.05+git24-gb25b21054~dfsg.1-1~nd17.10+1+nd18.04+1 \
+        connectome-workbench=1.5.0-1~nd18.04+1 \
+        git-annex-standalone && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Configure AFNI
+ENV AFNI_MODELPATH="/usr/lib/afni/models" \
+    AFNI_IMSAVE_WARNINGS="NO" \
+    AFNI_TTATLAS_DATASET="/usr/share/afni/atlases" \
+    AFNI_PLUGINPATH="/usr/lib/afni/plugins"
+
+ENV PATH="/usr/lib/afni/bin:$PATH"
+
+# Install ANTs latest from source
+ENV ANTSPATH=/usr/lib/ants
+RUN mkdir -p $ANTSPATH && \
+    curl -sSL "https://dl.dropbox.com/s/gwf51ykkk5bifyj/ants-Linux-centos6_x86_64-v2.3.4.tar.gz" \
+    | tar -xzC $ANTSPATH --strip-components 1
+ENV PATH=$ANTSPATH:$PATH
+
 # Install Convert3D
-ENV C3DPATH="/opt/convert3d-nightly" \
-    PATH="/opt/convert3d-nightly/bin:$PATH"
-RUN echo "Downloading Convert3D ..." \
-    && mkdir -p /opt/convert3d-nightly \
-    && curl -fsSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/Nightly/c3d-nightly-Linux-x86_64.tar.gz/download \
-    | tar -xz -C /opt/convert3d-nightly --strip-components 1
-
-# Install AFNI
-ENV AFNI_INSTALLDIR=/usr/lib/afni \
-    PATH=${PATH}:/usr/lib/afni/bin \
-    AFNI_PLUGINPATH=/usr/lib/afni/plugins \
-    AFNI_MODELPATH=/usr/lib/afni/models \
-    AFNI_TTATLAS_DATASET=/usr/share/afni/atlases \
-    AFNI_IMSAVE_WARNINGS=NO \
-    FSLOUTPUTTYPE=NIFTI_GZ \
-    MRTRIX_NTHREADS=1 \
-    IS_DOCKER_8395080871=1
-
-# Installing ANTs latest from source
-ARG ANTS_SHA=e00e8164d7a92f048e5d06e388a15c1ee8e889c4
-ADD https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh /cmake-3.11.4-Linux-x86_64.sh
-ENV ANTSPATH="/opt/ants-latest/bin" \
-    PATH="/opt/ants-latest/bin:$PATH" \
-    LD_LIBRARY_PATH="/opt/ants-latest/lib:$LD_LIBRARY_PATH"
-RUN mkdir /opt/cmake \
-    && sh /cmake-3.11.4-Linux-x86_64.sh --prefix=/opt/cmake --skip-license \
-    && ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake \
-    && apt-get update -qq \
-        && mkdir /tmp/ants \
-        && cd /tmp \
-        && git clone https://github.com/ANTsX/ANTs.git \
-        && mv ANTs /tmp/ants/source \
-        && cd /tmp/ants/source \
-        && git checkout ${ANTS_SHA} \
-        && mkdir -p /tmp/ants/build \
-        && cd /tmp/ants/build \
-        && mkdir -p /opt/ants-latest \
-        && git config --global url."https://".insteadOf git:// \
-        && cmake -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/opt/ants-latest /tmp/ants/source \
-        && make -j2 \
-        && cd ANTS-build \
-        && make install \
-        && rm -rf /tmp/ants
+RUN echo "Downloading C3D ..." \
+    && mkdir /opt/c3d \
+    && curl -sSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/1.0.0/c3d-1.0.0-Linux-x86_64.tar.gz/download \
+    | tar -xzC /opt/c3d --strip-components=1
+ENV C3DPATH=/opt/c3d/bin \
+    PATH=/opt/c3d/bin:$PATH
 
 # Install SVGO
 RUN curl -sL https://deb.nodesource.com/setup_12.x  | bash -
@@ -178,9 +161,9 @@ RUN npm install -g svgo
 RUN npm install -g bids-validator@1.8.4
 
 # Install miniconda
-RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-4.5.12-Linux-x86_64.sh && \
-    bash Miniconda3-4.5.12-Linux-x86_64.sh -b -p /usr/local/miniconda && \
-    rm Miniconda3-4.5.12-Linux-x86_64.sh
+RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-py38_4.9.2-Linux-x86_64.sh && \
+    bash Miniconda3-py38_4.9.2-Linux-x86_64.sh -b -p /usr/local/miniconda && \
+    rm Miniconda3-py38_4.9.2-Linux-x86_64.sh
 
 # Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
 ENV PATH="/usr/local/miniconda/bin:$PATH" \
@@ -220,25 +203,18 @@ RUN python -c "from matplotlib import font_manager" && \
     sed -i 's/\(backend *: \).*$/\1Agg/g' $( python -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
 
 # Precaching atlases
-COPY setup.cfg aslprep-setup.cfg
-RUN pip install --no-cache-dir "$( grep templateflow aslprep-setup.cfg | xargs )" && \
+RUN pip install --no-cache-dir "templateflow ~= 0.8.1" && \
     python -c "\
         from templateflow import api as tfapi; \
-        tfapi.get(
-            'MNI152NLin6Asym', atlas=None, resolution=[1, 2], \
-            desc=None, extension=['.nii', '.nii.gz'],
-        ); \
-        tfapi.get(
-            'MNI152NLin6Asym', atlas=None, resolution=[1, 2], \
-            desc='brain', extension=['.nii', '.nii.gz'],
-        ); \
-        tfapi.get(
-            'MNI152NLin2009cAsym', atlas=None, resolution=[1, 2],\
-            extension=['.nii', '.nii.gz'],
+        tfapi.get( \
+            ['MNI152NLin2009cAsym', 'MNI152NLin6Asym'], \
+            atlas=None, \
+            resolution=[1, 2], \
+            desc=['brain', None], \
+            extension=['.nii', '.nii.gz'], \
         ); \
         tfapi.get('OASIS30ANTs', extension=['.nii', '.nii.gz']); \
     " && \
-    rm aslprep-setup.cfg && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
