@@ -78,6 +78,7 @@ RUN conda install -y \
         python=3.8 \
         conda-build \
         pip=21.0 \
+        matplotlib \
         mkl=2021.2 \
         mkl-service=2.3 \
         libxml2=2.9.8 \
