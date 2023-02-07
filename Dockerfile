@@ -211,8 +211,7 @@ RUN pip install --no-cache-dir "templateflow ~= 0.8.1" && \
     python -c "\
         from templateflow import api as tfapi; \
         tfapi.get(['MNI152NLin2009cAsym', 'MNI152NLin6Asym'], atlas=None, resolution=[1, 2], desc=['brain', None], extension=['.nii', '.nii.gz']); \
-        tfapi.get('OASIS30ANTs', extension=['.nii', '.nii.gz']); \
-    " && \
+        tfapi.get('OASIS30ANTs', extension=['.nii', '.nii.gz']);" && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
