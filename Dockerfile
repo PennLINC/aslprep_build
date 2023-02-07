@@ -19,7 +19,6 @@ RUN apt-get update && \
         g++ \
         gcc \
         git \
-        gpg-agent \
         imagemagick \
         libboost-all-dev \
         libeigen3-dev \
@@ -96,6 +95,35 @@ ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
 
+# Install miniconda
+RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-py38_4.9.2-Linux-x86_64.sh && \
+    bash Miniconda3-py38_4.9.2-Linux-x86_64.sh -b -p /usr/local/miniconda && \
+    rm Miniconda3-py38_4.9.2-Linux-x86_64.sh
+
+# Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
+ENV PATH="/usr/local/miniconda/bin:$PATH" \
+    CPATH="/usr/local/miniconda/include:$CPATH" \
+    LANG="C.UTF-8" \
+    LC_ALL="C.UTF-8" \
+    PYTHONNOUSERSITE=1
+
+# Install Python dependencies
+RUN conda install -y \
+        python=3.8 \
+        conda-build \
+        pip=21.0 \
+        mkl=2021.2 \
+        mkl-service=2.3 \
+        libxml2=2.9.8 \
+        libxslt=1.1.32 \
+        graphviz=2.40.1 \
+        zlib; \
+        sync && \
+    chmod -R a+rX /usr/local/miniconda; sync && \
+    chmod +x /usr/local/miniconda/bin/*; sync && \
+    conda build purge-all; sync && \
+    conda clean -tipsy; sync
+
 # Install FSL
 ENV FSLDIR="/opt/fsl-6.0.3" \
     PATH="/opt/fsl-6.0.3/bin:$PATH"
@@ -160,34 +188,6 @@ RUN npm install -g svgo
 
 # Install bids-validator
 RUN npm install -g bids-validator@1.8.4
-
-# Install miniconda
-RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-py38_4.9.2-Linux-x86_64.sh && \
-    bash Miniconda3-py38_4.9.2-Linux-x86_64.sh -b -p /usr/local/miniconda && \
-    rm Miniconda3-py38_4.9.2-Linux-x86_64.sh
-
-# Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
-ENV PATH="/usr/local/miniconda/bin:$PATH" \
-    CPATH="/usr/local/miniconda/include:$CPATH" \
-    LANG="C.UTF-8" \
-    LC_ALL="C.UTF-8" \
-    PYTHONNOUSERSITE=1
-
-# Install Python dependencies
-RUN conda install -y \
-        python=3.8 \
-        pip=21.0 \
-        mkl=2021.2 \
-        mkl-service=2.3 \
-        libxml2=2.9.8 \
-        libxslt=1.1.32 \
-        graphviz=2.40.1 \
-        zlib; \
-        sync && \
-    chmod -R a+rX /usr/local/miniconda; sync && \
-    chmod +x /usr/local/miniconda/bin/*; sync && \
-    conda build purge-all; sync && \
-    conda clean -tipsy && sync
 
 # Unless otherwise specified each process should only use one thread - nipype
 # will handle parallelization
