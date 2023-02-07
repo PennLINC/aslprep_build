@@ -6,6 +6,7 @@ COPY docker/files/neurodebian.gpg /usr/local/etc/neurodebian.gpg
 # Prepare environment
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        apt-utils \
         autoconf \
         bc \
         build-essential \
@@ -19,6 +20,7 @@ RUN apt-get update && \
         g++ \
         gcc \
         git \
+        gnupg-agent \
         imagemagick \
         libboost-all-dev \
         libeigen3-dev \
@@ -59,6 +61,55 @@ RUN apt-get update && \
 ENV OS="Linux" \
     FIX_VERTEX_AREA=""
 
+# Install miniconda
+RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-py38_4.9.2-Linux-x86_64.sh && \
+    bash Miniconda3-py38_4.9.2-Linux-x86_64.sh -b -p /usr/local/miniconda && \
+    rm Miniconda3-py38_4.9.2-Linux-x86_64.sh
+
+# Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
+ENV PATH="/usr/local/miniconda/bin:$PATH" \
+    CPATH="/usr/local/miniconda/include:$CPATH" \
+    LANG="C.UTF-8" \
+    LC_ALL="C.UTF-8" \
+    PYTHONNOUSERSITE=1
+
+# Install Python dependencies
+RUN conda install -y \
+        python=3.8 \
+        conda-build \
+        pip=21.0 \
+        mkl=2021.2 \
+        mkl-service=2.3 \
+        libxml2=2.9.8 \
+        libxslt=1.1.32 \
+        graphviz=2.40.1 \
+        zlib; \
+        sync && \
+    chmod -R a+rX /usr/local/miniconda; sync && \
+    chmod +x /usr/local/miniconda/bin/*; sync && \
+    conda build purge-all; sync && \
+    conda clean -tipsy; sync
+
+# Install Neurodebian packages (AFNI, Connectome Workbench, git)
+RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
+    apt-key add /usr/local/etc/neurodebian.gpg && \
+    (apt-key adv --refresh-keys --keyserver hkp://ha.pool.sks-keyservers.net 0xA5D32F012649A5A9 || true)
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        afni=18.0.05+git24-gb25b21054~dfsg.1-1~nd17.10+1+nd18.04+1 \
+        connectome-workbench=1.5.0-1~nd18.04+1 \
+        git-annex-standalone && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Configure AFNI
+ENV AFNI_MODELPATH="/usr/lib/afni/models" \
+    AFNI_IMSAVE_WARNINGS="NO" \
+    AFNI_TTATLAS_DATASET="/usr/share/afni/atlases" \
+    AFNI_PLUGINPATH="/usr/lib/afni/plugins"
+
+ENV PATH="/usr/lib/afni/bin:$PATH"
+
 # Install FreeSurfer
 RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.1/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.1.tar.gz | tar zxv --no-same-owner -C /opt \
     --exclude='freesurfer/diffusion' \
@@ -95,78 +146,6 @@ ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
 
-# Install miniconda
-RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-py38_4.9.2-Linux-x86_64.sh && \
-    bash Miniconda3-py38_4.9.2-Linux-x86_64.sh -b -p /usr/local/miniconda && \
-    rm Miniconda3-py38_4.9.2-Linux-x86_64.sh
-
-# Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
-ENV PATH="/usr/local/miniconda/bin:$PATH" \
-    CPATH="/usr/local/miniconda/include:$CPATH" \
-    LANG="C.UTF-8" \
-    LC_ALL="C.UTF-8" \
-    PYTHONNOUSERSITE=1
-
-# Install Python dependencies
-RUN conda install -y \
-        python=3.8 \
-        conda-build \
-        pip=21.0 \
-        mkl=2021.2 \
-        mkl-service=2.3 \
-        libxml2=2.9.8 \
-        libxslt=1.1.32 \
-        graphviz=2.40.1 \
-        zlib; \
-        sync && \
-    chmod -R a+rX /usr/local/miniconda; sync && \
-    chmod +x /usr/local/miniconda/bin/*; sync && \
-    conda build purge-all; sync && \
-    conda clean -tipsy; sync
-
-# Install FSL
-ENV FSLDIR="/opt/fsl-6.0.3" \
-    PATH="/opt/fsl-6.0.3/bin:$PATH"
-
-RUN echo "Downloading FSL ..." \
-    && mkdir -p /opt/fsl-6.0.3 \
-    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.3-centos6_64.tar.gz \
-    | tar -xz -C /opt/fsl-6.0.3 --strip-components 1 \
-    --exclude='fsl/doc' \
-    --exclude='fsl/data/atlases' \
-    --exclude='fsl/data/possum' \
-    --exclude='fsl/src' \
-    --exclude='fsl/extras/src' \
-    --exclude='fsl/bin/fslview*' \
-    --exclude='fsl/bin/FSLeyes' \
-    && echo "Installing FSL conda environment ..." \
-    && sed -i -e "/fsleyes/d" -e "/wxpython/d" \
-        ${FSLDIR}/etc/fslconf/fslpython_environment.yml \
-    && bash /opt/fsl-6.0.3/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.3 \
-    && find ${FSLDIR}/fslpython/envs/fslpython/lib/python3.7/site-packages/ -type d -name "tests"  -print0 | xargs -0 rm -r \
-    && ${FSLDIR}/fslpython/bin/conda clean --all
-
-# Install Neurodebian packages (AFNI, Connectome Workbench, git)
-RUN apt-get install -y --no-install-recommends gpg-agent && \
-    curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
-    apt-key add /usr/local/etc/neurodebian.gpg && \
-    (apt-key adv --refresh-keys --keyserver hkp://ha.pool.sks-keyservers.net 0xA5D32F012649A5A9 || true)
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        afni=18.0.05+git24-gb25b21054~dfsg.1-1~nd17.10+1+nd18.04+1 \
-        connectome-workbench=1.5.0-1~nd18.04+1 \
-        git-annex-standalone && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Configure AFNI
-ENV AFNI_MODELPATH="/usr/lib/afni/models" \
-    AFNI_IMSAVE_WARNINGS="NO" \
-    AFNI_TTATLAS_DATASET="/usr/share/afni/atlases" \
-    AFNI_PLUGINPATH="/usr/lib/afni/plugins"
-
-ENV PATH="/usr/lib/afni/bin:$PATH"
-
 # Install ANTs latest from source
 ENV ANTSPATH=/usr/lib/ants
 RUN mkdir -p $ANTSPATH && \
@@ -194,6 +173,28 @@ RUN npm install -g bids-validator@1.8.4
 # will handle parallelization
 ENV MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1
+
+# Install FSL
+ENV FSLDIR="/opt/fsl-6.0.3" \
+    PATH="/opt/fsl-6.0.3/bin:$PATH"
+
+RUN echo "Downloading FSL ..." \
+    && mkdir -p /opt/fsl-6.0.3 \
+    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.3-centos6_64.tar.gz \
+    | tar -xz -C /opt/fsl-6.0.3 --strip-components 1 \
+    --exclude='fsl/doc' \
+    --exclude='fsl/data/atlases' \
+    --exclude='fsl/data/possum' \
+    --exclude='fsl/src' \
+    --exclude='fsl/extras/src' \
+    --exclude='fsl/bin/fslview*' \
+    --exclude='fsl/bin/FSLeyes' \
+    && echo "Installing FSL conda environment ..." \
+    && sed -i -e "/fsleyes/d" -e "/wxpython/d" \
+        ${FSLDIR}/etc/fslconf/fslpython_environment.yml \
+    && bash /opt/fsl-6.0.3/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.3 \
+    && find ${FSLDIR}/fslpython/envs/fslpython/lib/python3.7/site-packages/ -type d -name "tests"  -print0 | xargs -0 rm -r \
+    && ${FSLDIR}/fslpython/bin/conda clean --all
 
 # Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users aslprep
