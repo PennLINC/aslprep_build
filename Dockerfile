@@ -19,6 +19,7 @@ RUN apt-get update && \
         g++ \
         gcc \
         git \
+        gpg-agent \
         imagemagick \
         libboost-all-dev \
         libeigen3-dev \
