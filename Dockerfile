@@ -209,11 +209,11 @@ RUN python -c "from matplotlib import font_manager" && \
 # Precaching atlases
 RUN pip install --no-cache-dir "templateflow ~= 0.8.1" && \
     python -c "\
-from templateflow import api as tfapi; \
-tfapi.get(['MNI152NLin2009cAsym', 'MNI152NLin6Asym'], atlas=None, resolution=[1, 2], desc=['brain', None], extension=['.nii', '.nii.gz']); \
-tfapi.get('OASIS30ANTs', extension=['.nii', '.nii.gz']);" && \
+    from templateflow import api as tfapi; \
+    tfapi.get(['MNI152NLin2009cAsym', 'MNI152NLin6Asym'], atlas=None, resolution=[1, 2], desc=['brain', None], extension=['.nii', '.nii.gz']); \
+    tfapi.get('OASIS30ANTs', extension=['.nii', '.nii.gz']);" && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
-    find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
+    find $HOME/.cache/templateflow -type f -exec chmod go=u {}
 
 # Install pandoc
 RUN curl -o pandoc-2.2.2.1-1-amd64.deb -sSL "https://github.com/jgm/pandoc/releases/download/2.2.2.1/pandoc-2.2.2.1-1-amd64.deb" && \
