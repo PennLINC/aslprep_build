@@ -177,7 +177,8 @@ ENV MKL_NUM_THREADS=1 \
 
 # Install FSL
 ENV FSLDIR="/opt/fsl-6.0.3" \
-    PATH="/opt/fsl-6.0.3/bin:$PATH"
+    PATH="/opt/fsl-6.0.3/bin:$PATH" \
+    FSLOUTPUTTYPE="NIFTI_GZ"
 
 RUN echo "Downloading FSL ..." \
     && mkdir -p /opt/fsl-6.0.3 \
