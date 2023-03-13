@@ -176,14 +176,14 @@ ENV MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1
 
 # Install FSL
-ENV FSLDIR="/opt/fsl-6.0.6" \
-    PATH="/opt/fsl-6.0.6/bin:$PATH" \
+ENV FSLDIR="/opt/fsl-6.0.5" \
+    PATH="/opt/fsl-6.0.5/bin:$PATH" \
     FSLOUTPUTTYPE="NIFTI_GZ"
 
 RUN echo "Downloading FSL ..." \
-    && mkdir -p /opt/fsl-6.0.6 \
-    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.6-centos7_64.tar.gz \
-    | tar -xz -C /opt/fsl-6.0.6 --strip-components 1 \
+    && mkdir -p /opt/fsl-6.0.5 \
+    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.5-centos7_64.tar.gz \
+    | tar -xz -C /opt/fsl-6.0.5 --strip-components 1 \
     --exclude='fsl/doc' \
     --exclude='fsl/data/atlases' \
     --exclude='fsl/data/possum' \
@@ -194,7 +194,7 @@ RUN echo "Downloading FSL ..." \
     && echo "Installing FSL conda environment ..." \
     && sed -i -e "/fsleyes/d" -e "/wxpython/d" \
         ${FSLDIR}/etc/fslconf/fslpython_environment.yml \
-    && bash /opt/fsl-6.0.6/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.6 \
+    && bash /opt/fsl-6.0.5/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.5 \
     && find ${FSLDIR}/fslpython/envs/fslpython/lib/python3.7/site-packages/ -type d -name "tests"  -print0 | xargs -0 rm -r \
     && ${FSLDIR}/fslpython/bin/conda clean --all
 
