@@ -182,7 +182,7 @@ ENV FSLDIR="/opt/fsl-6.0.6.4" \
 
 RUN echo "Downloading FSL ..." \
     && mkdir -p /opt/fsl-6.0.6.4 \
-    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.6.4-ubuntu18_64.tar.gz \
+    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.6.4-centos8_64.tar.gz \
     | tar -xz -C /opt/fsl-6.0.6.4 --strip-components 1 \
     --exclude='fsl/doc' \
     --exclude='fsl/data/atlases' \
