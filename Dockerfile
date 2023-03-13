@@ -157,7 +157,7 @@ ENV PATH=$ANTSPATH:$PATH
 # Install Convert3D
 RUN echo "Downloading C3D ..." \
     && mkdir /opt/c3d \
-    && curl -sSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/1.0.0/c3d-1.0.0-Linux-x86_64.tar.gz/download \
+    && curl -sSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/Experimental/c3d-1.4.0-Linux-x86_64.dmg/download \
     | tar -xzC /opt/c3d --strip-components=1
 ENV C3DPATH=/opt/c3d/bin \
     PATH=/opt/c3d/bin:$PATH
