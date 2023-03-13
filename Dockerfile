@@ -182,7 +182,7 @@ ENV FSLDIR="/opt/fsl-6.0.6.4" \
 
 RUN echo "Downloading FSL ..." \
     && mkdir -p /opt/fsl-6.0.6.4 \
-    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.6.4-centos6_64.tar.gz \
+    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.6.4-ubuntu18_64.tar.gz \
     | tar -xz -C /opt/fsl-6.0.6.4 --strip-components 1 \
     --exclude='fsl/doc' \
     --exclude='fsl/data/atlases' \
@@ -207,7 +207,7 @@ ENV HOME="/home/aslprep"
 RUN python -c "from matplotlib import font_manager" && \
     sed -i 's/\(backend *: \).*$/\1Agg/g' $( python -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
 
-# Precaching atlases
+# Precaching templates
 RUN pip install --no-cache-dir "templateflow ~= 0.8.1" && \
     python -c "from templateflow import api as tfapi; \
                tfapi.get(['MNI152NLin2009cAsym', 'MNI152NLin6Asym'], atlas=None, resolution=[1, 2], desc=['brain', None], extension=['.nii', '.nii.gz']); \
