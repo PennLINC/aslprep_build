@@ -195,7 +195,7 @@ RUN echo "Downloading FSL ..." \
     && sed -i -e "/fsleyes/d" -e "/wxpython/d" \
         ${FSLDIR}/etc/fslconf/fslpython_environment.yml \
     && bash /opt/fsl-6.0.5/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.5 \
-    && find ${FSLDIR}/fslpython/envs/fslpython/lib/python3.9/site-packages/ -type d -name "tests"  -print0 | xargs -0 rm -r \
+    && find ${FSLDIR}/fslpython/envs/fslpython/lib/python3.8/site-packages/ -type d -name "tests"  -print0 | xargs -0 rm -r \
     && ${FSLDIR}/fslpython/bin/conda clean --all
 
 # Create a shared $HOME directory
