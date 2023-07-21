@@ -1,7 +1,15 @@
 FROM ubuntu:bionic-20220531
+FROM pennlinc/atlaspack:0.0.4 as atlaspack
 
 # Pre-cache neurodebian key
 COPY docker/files/neurodebian.gpg /usr/local/etc/neurodebian.gpg
+
+# Download atlases from AtlasPack
+RUN mkdir /AtlasPack
+COPY --from=atlaspack /AtlasPack/tpl-fsLR_*.dlabel.nii /AtlasPack/
+COPY --from=atlaspack /AtlasPack/tpl-MNI152NLin6Asym_*.nii.gz /AtlasPack/
+COPY --from=atlaspack /AtlasPack/atlas-4S*.tsv /AtlasPack/
+COPY --from=atlaspack /AtlasPack/*.json /AtlasPack/
 
 # Prepare environment
 RUN apt-get update && \
