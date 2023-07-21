@@ -1,5 +1,5 @@
-FROM ubuntu:bionic-20220531
 FROM pennlinc/atlaspack:0.0.4 as atlaspack
+FROM ubuntu:bionic-20220531
 
 # Pre-cache neurodebian key
 COPY docker/files/neurodebian.gpg /usr/local/etc/neurodebian.gpg
