@@ -83,8 +83,6 @@ ENV PATH="/usr/local/miniconda/bin:$PATH" \
 
 # Install Python dependencies
 RUN conda \
-        --channel conda-forge \
-        --channel https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/ \
         install -y \
         python=3.10 \
         conda-build \
@@ -103,7 +101,9 @@ RUN conda \
         libxml2=2.9.8 \
         libxslt=1.1.32 \
         graphviz=2.40.1 \
-        zlib; \
+        zlib \
+        --channel conda-forge \
+        --channel https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/ ; \
         sync && \
     chmod -R a+rX /usr/local/miniconda; sync && \
     chmod +x /usr/local/miniconda/bin/*; sync && \
