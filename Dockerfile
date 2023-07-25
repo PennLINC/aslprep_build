@@ -82,10 +82,21 @@ ENV PATH="/usr/local/miniconda/bin:$PATH" \
     PYTHONNOUSERSITE=1
 
 # Install Python dependencies
-RUN conda install -y \
-        python=3.8 \
+RUN conda \
+        --channel conda-forge \
+        --channel https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/ \
+        install -y \
+        python >=3.10,<3.11 \
         conda-build \
-        pip=21.0 \
+        pip=23 \
+        fsl-bet2=2111.0 \
+        fsl-flirt=2111.0 \
+        fsl-fast4=2111.0 \
+        fsl-fugue=2201.2 \
+        fsl-mcflirt=2111.0 \
+        fsl-miscmaths=2203.2 \
+        fsl-topup=2203.1 \
+        convert3d=1.3.0 \
         matplotlib \
         mkl=2021.2 \
         mkl-service=2.3 \
@@ -162,14 +173,6 @@ RUN mkdir -p $ANTSPATH && \
     | tar -xzC $ANTSPATH --strip-components 1
 ENV PATH=$ANTSPATH:$PATH
 
-# Install Convert3D
-RUN echo "Downloading C3D ..." \
-    && mkdir /opt/c3d \
-    && curl -sSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/1.0.0/c3d-1.0.0-Linux-x86_64.tar.gz/download \
-    | tar -xzC /opt/c3d --strip-components=1
-ENV C3DPATH=/opt/c3d/bin \
-    PATH=/opt/c3d/bin:$PATH
-
 # Install SVGO
 RUN curl -sL https://deb.nodesource.com/setup_12.x  | bash -
 RUN apt-get -y install nodejs
@@ -183,28 +186,17 @@ RUN npm install -g bids-validator@1.8.4
 ENV MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1
 
-# Install FSL
-ENV FSLDIR="/opt/fsl-6.0.5" \
-    PATH="/opt/fsl-6.0.5/bin:$PATH" \
-    FSLOUTPUTTYPE="NIFTI_GZ"
-
-RUN echo "Downloading FSL ..." \
-    && mkdir -p /opt/fsl-6.0.5 \
-    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.5-centos7_64.tar.gz \
-    | tar -xz -C /opt/fsl-6.0.5 --strip-components 1 \
-    --exclude='fsl/doc' \
-    --exclude='fsl/data/atlases' \
-    --exclude='fsl/data/possum' \
-    --exclude='fsl/src' \
-    --exclude='fsl/extras/src' \
-    --exclude='fsl/bin/fslview*' \
-    --exclude='fsl/bin/FSLeyes' \
-    && echo "Installing FSL conda environment ..." \
-    && sed -i -e "/fsleyes/d" -e "/wxpython/d" \
-        ${FSLDIR}/etc/fslconf/fslpython_environment.yml \
-    && bash /opt/fsl-6.0.5/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.5 \
-    && find ${FSLDIR}/fslpython/envs/fslpython/lib/python3.8/site-packages/ -type d -name "tests"  -print0 | xargs -0 rm -r \
-    && ${FSLDIR}/fslpython/bin/conda clean --all
+# FSL environment
+ENV LANG="C.UTF-8" \
+    LC_ALL="C.UTF-8" \
+    PYTHONNOUSERSITE=1 \
+    FSLDIR="/usr/local/miniconda" \
+    FSLOUTPUTTYPE="NIFTI_GZ" \
+    FSLMULTIFILEQUIT="TRUE" \
+    FSLLOCKDIR="" \
+    FSLMACHINELIST="" \
+    FSLREMOTECALL="" \
+    FSLGECUDAQ="cuda.q"
 
 # Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users aslprep
