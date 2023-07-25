@@ -86,7 +86,7 @@ RUN conda \
         --channel conda-forge \
         --channel https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/ \
         install -y \
-        python >=3.10,<3.11 \
+        python=3.10 \
         conda-build \
         pip=23 \
         fsl-bet2=2111.0 \
