@@ -1,3 +1,4 @@
+FROM pennlinc/aslprep:0.4.0 as build_fsl
 FROM pennlinc/atlaspack:0.0.4 as atlaspack
 FROM ubuntu:bionic-20220531
 
@@ -119,6 +120,12 @@ ENV AFNI_MODELPATH="/usr/lib/afni/models" \
 
 ENV PATH="/usr/lib/afni/bin:$PATH"
 
+# Install FSL from old ASLPrep version
+COPY --from=build_fsl /opt/fsl-6.0.5/ /opt/fsl-6.0.5/
+ENV FSLDIR="/opt/fsl-6.0.5" \
+    PATH="/opt/fsl-6.0.5/bin:$PATH" \
+    FSLOUTPUTTYPE="NIFTI_GZ"
+
 # Install FreeSurfer
 RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.1/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.1.tar.gz | tar zxv --no-same-owner -C /opt \
     --exclude='freesurfer/diffusion' \
@@ -182,29 +189,6 @@ RUN npm install -g bids-validator@1.8.4
 # will handle parallelization
 ENV MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1
-
-# Install FSL
-ENV FSLDIR="/opt/fsl-6.0.5" \
-    PATH="/opt/fsl-6.0.5/bin:$PATH" \
-    FSLOUTPUTTYPE="NIFTI_GZ"
-
-RUN echo "Downloading FSL ..." \
-    && mkdir -p /opt/fsl-6.0.5 \
-    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.5-centos7_64.tar.gz \
-    | tar -xz -C /opt/fsl-6.0.5 --strip-components 1 \
-    --exclude='fsl/doc' \
-    --exclude='fsl/data/atlases' \
-    --exclude='fsl/data/possum' \
-    --exclude='fsl/src' \
-    --exclude='fsl/extras/src' \
-    --exclude='fsl/bin/fslview*' \
-    --exclude='fsl/bin/FSLeyes' \
-    && echo "Installing FSL conda environment ..." \
-    && sed -i -e "/fsleyes/d" -e "/wxpython/d" \
-        ${FSLDIR}/etc/fslconf/fslpython_environment.yml \
-    && bash /opt/fsl-6.0.5/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.5 \
-    && find ${FSLDIR}/fslpython/envs/fslpython/lib/python3.8/site-packages/ -type d -name "tests"  -print0 | xargs -0 rm -r \
-    && ${FSLDIR}/fslpython/bin/conda clean --all
 
 # Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users aslprep
