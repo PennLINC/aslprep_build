@@ -83,17 +83,28 @@ ENV PATH="/usr/local/miniconda/bin:$PATH" \
     PYTHONNOUSERSITE=1
 
 # Install Python dependencies
-RUN conda install -y \
-        python=3.8 \
+RUN conda \
+        install -y \
+        python=3.10 \
         conda-build \
-        pip=21.0 \
+        pip=23 \
+        fsl-bet2=2111.0 \
+        fsl-flirt=2111.0 \
+        fsl-fast4=2111.0 \
+        fsl-fugue=2201.2 \
+        fsl-mcflirt=2111.0 \
+        fsl-miscmaths=2203.2 \
+        fsl-topup=2203.1 \
+        convert3d=1.3.0 \
         matplotlib \
         mkl=2021.2 \
         mkl-service=2.3 \
         libxml2=2.9.8 \
         libxslt=1.1.32 \
         graphviz=2.40.1 \
-        zlib; \
+        zlib \
+        --channel conda-forge \
+        --channel https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/ ; \
         sync && \
     chmod -R a+rX /usr/local/miniconda; sync && \
     chmod +x /usr/local/miniconda/bin/*; sync && \
@@ -168,14 +179,6 @@ RUN mkdir -p $ANTSPATH && \
     curl -sSL "https://dl.dropbox.com/s/gwf51ykkk5bifyj/ants-Linux-centos6_x86_64-v2.3.4.tar.gz" \
     | tar -xzC $ANTSPATH --strip-components 1
 ENV PATH=$ANTSPATH:$PATH
-
-# Install Convert3D
-RUN echo "Downloading C3D ..." \
-    && mkdir /opt/c3d \
-    && curl -sSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/1.0.0/c3d-1.0.0-Linux-x86_64.tar.gz/download \
-    | tar -xzC /opt/c3d --strip-components=1
-ENV C3DPATH=/opt/c3d/bin \
-    PATH=/opt/c3d/bin:$PATH
 
 # Install SVGO
 RUN curl -sL https://deb.nodesource.com/setup_12.x  | bash -
