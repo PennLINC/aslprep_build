@@ -131,12 +131,6 @@ ENV AFNI_MODELPATH="/usr/lib/afni/models" \
 
 ENV PATH="/usr/lib/afni/bin:$PATH"
 
-# Install FSL from old ASLPrep version
-COPY --from=build_fsl /opt/fsl-6.0.5/ /opt/fsl-6.0.5/
-ENV FSLDIR="/opt/fsl-6.0.5" \
-    PATH="/opt/fsl-6.0.5/bin:$PATH" \
-    FSLOUTPUTTYPE="NIFTI_GZ"
-
 # Install FreeSurfer
 RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.1/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.1.tar.gz | tar zxv --no-same-owner -C /opt \
     --exclude='freesurfer/diffusion' \
@@ -187,6 +181,12 @@ RUN npm install -g svgo
 
 # Install bids-validator
 RUN npm install -g bids-validator@1.8.4
+
+# Install FSL from old ASLPrep version
+COPY --from=build_fsl /opt/fsl-6.0.5/ /opt/fsl-6.0.5/
+ENV FSLDIR="/opt/fsl-6.0.5" \
+    PATH="/opt/fsl-6.0.5/bin:$PATH" \
+    FSLOUTPUTTYPE="NIFTI_GZ"
 
 # Unless otherwise specified each process should only use one thread - nipype
 # will handle parallelization
