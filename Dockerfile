@@ -88,13 +88,6 @@ RUN conda \
         python=3.10 \
         conda-build \
         pip=23 \
-        fsl-bet2=2111.0 \
-        fsl-flirt=2111.0 \
-        fsl-fast4=2111.0 \
-        fsl-fugue=2201.2 \
-        fsl-mcflirt=2111.0 \
-        fsl-miscmaths=2203.2 \
-        fsl-topup=2203.1 \
         convert3d=1.3.0 \
         matplotlib \
         mkl=2021.2 \
@@ -181,12 +174,6 @@ RUN npm install -g svgo
 
 # Install bids-validator
 RUN npm install -g bids-validator@1.8.4
-
-# Install FSL from old ASLPrep version
-COPY --from=build_fsl /opt/fsl-6.0.5/ /opt/fsl-6.0.5/
-ENV FSLDIR="/opt/fsl-6.0.5" \
-    PATH="/opt/fsl-6.0.5/bin:$PATH" \
-    FSLOUTPUTTYPE="NIFTI_GZ"
 
 # Unless otherwise specified each process should only use one thread - nipype
 # will handle parallelization
