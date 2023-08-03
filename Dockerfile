@@ -83,8 +83,7 @@ ENV PATH="/usr/local/miniconda/bin:$PATH" \
     PYTHONNOUSERSITE=1
 
 # Install Python dependencies
-RUN conda \
-        install -y \
+RUN conda install -y \
         python=3.10 \
         conda-build \
         pip=23 \
@@ -101,6 +100,12 @@ RUN conda \
     chmod +x /usr/local/miniconda/bin/*; sync && \
     conda build purge-all; sync && \
     conda clean -tipsy; sync
+
+# Install FSL from old ASLPrep version
+COPY --from=build_fsl /opt/fsl-6.0.5/ /opt/fsl-6.0.5/
+ENV FSLDIR="/opt/fsl-6.0.5" \
+    PATH="/opt/fsl-6.0.5/bin:$PATH" \
+    FSLOUTPUTTYPE="NIFTI_GZ"
 
 # Install Neurodebian packages (AFNI, Connectome Workbench, git)
 RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
