@@ -112,8 +112,8 @@ ENV FSLDIR="/opt/fsl-6.0.7.1" \
     FSLMACHINELIST="" \
     FSLREMOTECALL="" \
     FSLGECUDAQ="cuda.q"
-RUN echo "Installing FSL conda environment ..." && \
-    bash /opt/fsl-6.0.7.1/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.7.1
+# RUN echo "Installing FSL conda environment ..." && \
+#     bash /opt/fsl-6.0.7.1/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.7.1
 
 # Install Neurodebian packages (AFNI, Connectome Workbench, git)
 RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
