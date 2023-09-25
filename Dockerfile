@@ -1,4 +1,3 @@
-FROM pennlinc/aslprep:0.4.0 as build_fsl
 FROM pennlinc/atlaspack:0.0.4 as atlaspack
 FROM ubuntu:bionic-20220531
 
@@ -102,10 +101,19 @@ RUN conda install -y \
     conda clean -tipsy; sync
 
 # Install FSL from old ASLPrep version
-COPY --from=build_fsl /opt/fsl-6.0.5/ /opt/fsl-6.0.5/
-ENV FSLDIR="/opt/fsl-6.0.5" \
-    PATH="/opt/fsl-6.0.5/bin:$PATH" \
-    FSLOUTPUTTYPE="NIFTI_GZ"
+RUN curl -fsSL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/releases/fslinstaller.py | python3 - -d /opt/fsl-6.0.7.1 -V 6.0.7.1
+ENV FSLDIR="/opt/fsl-6.0.7.1" \
+    PATH="/opt/fsl-6.0.7.1/bin:$PATH" \
+    FSLOUTPUTTYPE="NIFTI_GZ" \
+    FSLMULTIFILEQUIT: "TRUE" \
+    FSLTCLSH: "/opt/fsl-6.0.7.1/bin/fsltclsh" \
+    FSLWISH: "/opt/fsl-6.0.7.1/bin/fslwish" \
+    FSLLOCKDIR: "" \
+    FSLMACHINELIST: "" \
+    FSLREMOTECALL: "" \
+    FSLGECUDAQ: "cuda.q"
+RUN echo "Installing FSL conda environment ..." && \
+    bash /opt/fsl-6.0.7.1/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.7.1
 
 # Install Neurodebian packages (AFNI, Connectome Workbench, git)
 RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
