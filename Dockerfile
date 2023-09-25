@@ -105,13 +105,13 @@ RUN curl -fsSL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/releases/fslinst
 ENV FSLDIR="/opt/fsl-6.0.7.1" \
     PATH="/opt/fsl-6.0.7.1/bin:$PATH" \
     FSLOUTPUTTYPE="NIFTI_GZ" \
-    FSLMULTIFILEQUIT: "TRUE" \
-    FSLTCLSH: "/opt/fsl-6.0.7.1/bin/fsltclsh" \
-    FSLWISH: "/opt/fsl-6.0.7.1/bin/fslwish" \
-    FSLLOCKDIR: "" \
-    FSLMACHINELIST: "" \
-    FSLREMOTECALL: "" \
-    FSLGECUDAQ: "cuda.q"
+    FSLMULTIFILEQUIT="TRUE" \
+    FSLTCLSH="/opt/fsl-6.0.7.1/bin/fsltclsh" \
+    FSLWISH="/opt/fsl-6.0.7.1/bin/fslwish" \
+    FSLLOCKDIR="" \
+    FSLMACHINELIST="" \
+    FSLREMOTECALL="" \
+    FSLGECUDAQ="cuda.q"
 RUN echo "Installing FSL conda environment ..." && \
     bash /opt/fsl-6.0.7.1/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.7.1
 
