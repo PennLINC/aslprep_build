@@ -61,7 +61,7 @@ RUN apt-get update && \
         zlib1g \
         zlib1g-dev \
         && \
-    curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
+    curl -sL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y --no-install-recommends \
         nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -188,8 +188,6 @@ ENV C3DPATH=/opt/c3d/bin \
     PATH=/opt/c3d/bin:$PATH
 
 # Install SVGO
-RUN curl -sL https://deb.nodesource.com/setup_20.x  | bash -
-RUN apt-get -y install nodejs
 RUN npm install -g svgo
 
 # Install bids-validator
