@@ -88,19 +88,31 @@ RUN conda install -y \
         conda-build \
         pip=23 \
         mkl=2021.2 \
-        mkl-service=2.3; \
+        mkl-service=2.3 \
+        libxml2==2.9.8 \
+        libxslt==1.1.32 ; \
     sync && \
     pip install \
         matplotlib \
-        libxml2==2.9.8 \
-        libxslt==1.1.32 \
         graphviz==2.40.1 \
+        templateflow ~= 0.8.1 \
         zlib ; \
     sync && \
     chmod -R a+rX /usr/local/miniconda; sync && \
     chmod +x /usr/local/miniconda/bin/*; sync && \
     conda build purge-all; sync && \
     conda clean -tipsy; sync
+
+# Precache fonts, set "Agg" as default backend for matplotlib
+RUN python -c "from matplotlib import font_manager" && \
+    sed -i 's/\(backend *: \).*$/\1Agg/g' $( python -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
+
+# Precache commonly-used templates
+RUN python -c "from templateflow import api as tfapi; \
+               tfapi.get(['MNI152NLin2009cAsym', 'MNI152NLin6Asym'], atlas=None, resolution=[1, 2], desc=['brain', None], extension=['.nii', '.nii.gz']); \
+               tfapi.get('OASIS30ANTs', extension=['.nii', '.nii.gz']);" && \
+    find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
+    find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
 # Install FSL from old ASLPrep version
 # Based on https://github.com/ReproNim/neurodocker/blob/a87693e5676e7c4d272bc4eb8285f9232860d0ff/neurodocker/templates/fsl.yaml
@@ -203,18 +215,6 @@ ENV MKL_NUM_THREADS=1 \
 RUN useradd -m -s /bin/bash -G users aslprep
 WORKDIR /home/aslprep
 ENV HOME="/home/aslprep"
-
-# Precache fonts, set "Agg" as default backend for matplotlib
-RUN python -c "from matplotlib import font_manager" && \
-    sed -i 's/\(backend *: \).*$/\1Agg/g' $( python -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
-
-# Precache commonly-used templates
-RUN pip install --no-cache-dir "templateflow ~= 0.8.1" && \
-    python -c "from templateflow import api as tfapi; \
-               tfapi.get(['MNI152NLin2009cAsym', 'MNI152NLin6Asym'], atlas=None, resolution=[1, 2], desc=['brain', None], extension=['.nii', '.nii.gz']); \
-               tfapi.get('OASIS30ANTs', extension=['.nii', '.nii.gz']);" && \
-    find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
-    find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
 # Install pandoc (for HTML/LaTeX reports)
 RUN curl -o pandoc-2.2.2.1-1-amd64.deb -sSL "https://github.com/jgm/pandoc/releases/download/2.2.2.1/pandoc-2.2.2.1-1-amd64.deb" && \
