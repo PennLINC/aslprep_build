@@ -95,8 +95,8 @@ RUN conda install -y \
     sync && \
     pip install \
         matplotlib \
-        templateflow~=0.8.1 \
-        zlib ; \
+        requests \
+        templateflow~=0.8.1 ; \
     sync && \
     chmod -R a+rX /usr/local/miniconda; sync && \
     chmod +x /usr/local/miniconda/bin/*; sync && \
