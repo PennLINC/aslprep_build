@@ -87,6 +87,7 @@ RUN conda install -y \
         python=3.9 \
         conda-build \
         pip=23 \
+        graphviz=2.40.1 \
         mkl=2021.2 \
         mkl-service=2.3 \
         libxml2=2.9.8 \
@@ -94,7 +95,6 @@ RUN conda install -y \
     sync && \
     pip install \
         matplotlib \
-        graphviz==2.40.1 \
         templateflow~=0.8.1 \
         zlib ; \
     sync && \
