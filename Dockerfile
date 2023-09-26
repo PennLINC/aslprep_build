@@ -95,7 +95,7 @@ RUN conda install -y \
     pip install \
         matplotlib \
         graphviz==2.40.1 \
-        templateflow ~= 0.8.1 \
+        templateflow~=0.8.1 \
         zlib ; \
     sync && \
     chmod -R a+rX /usr/local/miniconda; sync && \
