@@ -81,7 +81,8 @@ ENV PATH="/usr/local/miniconda/bin:$PATH" \
     LC_ALL="C.UTF-8" \
     PYTHONNOUSERSITE=1
 
-# Install Python dependencies
+# Install basic Python dependencies for ASLPrep conda environment.
+# The ASLPrep Dockerfile will install more tailored dependencies.
 RUN conda install -y \
         python=3.10 \
         conda-build \
@@ -101,6 +102,7 @@ RUN conda install -y \
     conda clean -tipsy; sync
 
 # Install FSL from old ASLPrep version
+# Based on https://github.com/ReproNim/neurodocker/blob/a87693e5676e7c4d272bc4eb8285f9232860d0ff/neurodocker/templates/fsl.yaml
 RUN curl -fsSL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/releases/fslinstaller.py | python3 - -d /opt/fsl-6.0.7.1 -V 6.0.7.1
 ENV FSLDIR="/opt/fsl-6.0.7.1" \
     PATH="/opt/fsl-6.0.7.1/bin:$PATH" \
@@ -112,8 +114,6 @@ ENV FSLDIR="/opt/fsl-6.0.7.1" \
     FSLMACHINELIST="" \
     FSLREMOTECALL="" \
     FSLGECUDAQ="cuda.q"
-# RUN echo "Installing FSL conda environment ..." && \
-#     bash /opt/fsl-6.0.7.1/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.7.1
 
 # Install Neurodebian packages (AFNI, Connectome Workbench, git)
 RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
@@ -136,25 +136,26 @@ ENV AFNI_MODELPATH="/usr/lib/afni/models" \
 ENV PATH="/usr/lib/afni/bin:$PATH"
 
 # Install FreeSurfer
+# Only grab elements we need for ASLPrep
 RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.1/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.1.tar.gz | tar zxv --no-same-owner -C /opt \
-    --exclude='freesurfer/diffusion' \
-    --exclude='freesurfer/docs' \
-    --exclude='freesurfer/fsfast' \
-    --exclude='freesurfer/lib/cuda' \
-    --exclude='freesurfer/lib/qt' \
-    --exclude='freesurfer/matlab' \
-    --exclude='freesurfer/mni/share/man' \
-    --exclude='freesurfer/subjects/fsaverage_sym' \
-    --exclude='freesurfer/subjects/fsaverage3' \
-    --exclude='freesurfer/subjects/fsaverage4' \
-    --exclude='freesurfer/subjects/cvs_avg35' \
-    --exclude='freesurfer/subjects/cvs_avg35_inMNI152' \
-    --exclude='freesurfer/subjects/bert' \
-    --exclude='freesurfer/subjects/lh.EC_average' \
-    --exclude='freesurfer/subjects/rh.EC_average' \
-    --exclude='freesurfer/subjects/sample-*.mgz' \
-    --exclude='freesurfer/subjects/V1_average' \
-    --exclude='freesurfer/trctrain'
+    --exclude="freesurfer/diffusion" \
+    --exclude="freesurfer/docs" \
+    --exclude="freesurfer/fsfast" \
+    --exclude="freesurfer/lib/cuda" \
+    --exclude="freesurfer/lib/qt" \
+    --exclude="freesurfer/matlab" \
+    --exclude="freesurfer/mni/share/man" \
+    --exclude="freesurfer/subjects/fsaverage_sym" \
+    --exclude="freesurfer/subjects/fsaverage3" \
+    --exclude="freesurfer/subjects/fsaverage4" \
+    --exclude="freesurfer/subjects/cvs_avg35" \
+    --exclude="freesurfer/subjects/cvs_avg35_inMNI152" \
+    --exclude="freesurfer/subjects/bert" \
+    --exclude="freesurfer/subjects/lh.EC_average" \
+    --exclude="freesurfer/subjects/rh.EC_average" \
+    --exclude="freesurfer/subjects/sample-*.mgz" \
+    --exclude="freesurfer/subjects/V1_average" \
+    --exclude="freesurfer/trctrain"
 
 ENV FSF_OUTPUT_FORMAT="nii.gz" \
     FREESURFER_HOME="/opt/freesurfer"
@@ -204,11 +205,11 @@ RUN useradd -m -s /bin/bash -G users aslprep
 WORKDIR /home/aslprep
 ENV HOME="/home/aslprep"
 
-# Precaching fonts, set 'Agg' as default backend for matplotlib
+# Precache fonts, set "Agg" as default backend for matplotlib
 RUN python -c "from matplotlib import font_manager" && \
     sed -i 's/\(backend *: \).*$/\1Agg/g' $( python -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
 
-# Precaching templates
+# Precache commonly-used templates
 RUN pip install --no-cache-dir "templateflow ~= 0.8.1" && \
     python -c "from templateflow import api as tfapi; \
                tfapi.get(['MNI152NLin2009cAsym', 'MNI152NLin6Asym'], atlas=None, resolution=[1, 2], desc=['brain', None], extension=['.nii', '.nii.gz']); \
@@ -216,7 +217,7 @@ RUN pip install --no-cache-dir "templateflow ~= 0.8.1" && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
-# Install pandoc
+# Install pandoc (for HTML/LaTeX reports)
 RUN curl -o pandoc-2.2.2.1-1-amd64.deb -sSL "https://github.com/jgm/pandoc/releases/download/2.2.2.1/pandoc-2.2.2.1-1-amd64.deb" && \
     dpkg -i pandoc-2.2.2.1-1-amd64.deb && \
     rm pandoc-2.2.2.1-1-amd64.deb
