@@ -86,12 +86,12 @@ ENV PATH="/usr/local/miniconda/bin:$PATH" \
 RUN conda install -y \
         python=3.9 \
         conda-build \
-        pip=23 ; \
+        pip=23 \
+        mkl=2021.2 \
+        mkl-service=2.3; \
     sync && \
     pip install \
         matplotlib \
-        mkl==2021.2 \
-        mkl-service==2.3 \
         libxml2==2.9.8 \
         libxslt==1.1.32 \
         graphviz==2.40.1 \
