@@ -61,7 +61,7 @@ RUN apt-get update && \
         zlib1g \
         zlib1g-dev \
         && \
-    curl -sL https://deb.nodesource.com/setup_20.x | bash - && \
+    curl -sL https://deb.nodesource.com/setup_19.x | bash - && \
     apt-get install -y --no-install-recommends \
         nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
