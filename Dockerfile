@@ -1,4 +1,4 @@
-FROM pennlinc/atlaspack:0.0.5 as atlaspack
+FROM pennlinc/atlaspack:0.1.0 as atlaspack
 FROM ubuntu:bionic-20220531
 
 # Pre-cache neurodebian key
