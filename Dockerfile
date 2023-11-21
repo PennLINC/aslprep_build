@@ -84,7 +84,7 @@ ENV PATH="/usr/local/miniconda/bin:$PATH" \
 # Install basic Python dependencies for ASLPrep conda environment.
 # The ASLPrep Dockerfile will install more tailored dependencies.
 RUN conda install -y \
-        python=3.9 \
+        python=3.10 \
         conda-build \
         pip=23 \
         graphviz=2.40.1 \
