@@ -200,6 +200,10 @@ RUN echo "Downloading C3D ..." \
 ENV C3DPATH=/opt/c3d/bin \
     PATH=/opt/c3d/bin:$PATH
 
+# MSM HOCR (Nov 19, 2019 release)
+RUN curl -L -H "Accept: application/octet-stream" https://api.github.com/repos/ecr05/MSM_HOCR/releases/assets/16253707 -o /usr/local/bin/msm \
+    && chmod +x /usr/local/bin/msm
+
 # Install SVGO
 RUN npm install -g svgo
 
