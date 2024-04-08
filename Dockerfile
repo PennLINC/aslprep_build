@@ -150,7 +150,7 @@ ENV PATH="/usr/lib/afni/bin:$PATH"
 
 # Install FreeSurfer
 # Only grab elements we need for ASLPrep
-RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/freesurfer-Linux-centos6_x86_64-stable-pub-v7.3.2.tar.gz | tar zxv --no-same-owner -C /opt \
+RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/freesurfer-linux-ubuntu22_amd64-7.3.2.tar.gz | tar zxv --no-same-owner -C /opt \
     --exclude="freesurfer/diffusion" \
     --exclude="freesurfer/docs" \
     --exclude="freesurfer/fsfast" \
