@@ -239,10 +239,6 @@ ENV MKL_NUM_THREADS=1 \
 RUN curl -L -H "Accept: application/octet-stream" https://api.github.com/repos/ecr05/MSM_HOCR/releases/assets/16253707 -o /usr/local/bin/msm \
     && chmod +x /usr/local/bin/msm
 
-# Installing ASLPrep
-COPY --from=src /src/dist/*.whl .
-RUN pip install --no-cache-dir $( ls *.whl )[container,test]
-
 RUN find $HOME -type d -exec chmod go=u {} + && \
     find $HOME -type f -exec chmod go=u {} + && \
     rm -rf $HOME/.npm $HOME/.conda $HOME/.empty
