@@ -1,161 +1,190 @@
-FROM pennlinc/atlaspack:0.1.0 as atlaspack
-FROM ubuntu:jammy-20240125
+# ASLPrep Docker Container Image distribution
+#
+# MIT License
+#
+# Copyright (c) The NiPreps Developers
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
-# Pre-cache neurodebian key
-COPY docker/files/neurodebian.gpg /usr/local/etc/neurodebian.gpg
+# Ubuntu 22.04 LTS - Jammy
+ARG BASE_IMAGE=ubuntu:jammy-20240125
 
-# Download atlases from AtlasPack
-RUN mkdir /AtlasPack
-COPY --from=atlaspack /AtlasPack/tpl-fsLR_*.dlabel.nii /AtlasPack/
-COPY --from=atlaspack /AtlasPack/tpl-MNI152NLin6Asym_*.nii.gz /AtlasPack/
-COPY --from=atlaspack /AtlasPack/atlas-4S*.tsv /AtlasPack/
-COPY --from=atlaspack /AtlasPack/*.json /AtlasPack/
+#
+# Build wheel
+#
+FROM python:slim AS src
+RUN pip install build
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git
+COPY . /src
+RUN python -m build /src
 
-# Prepare environment
+#
+# Download stages
+#
+
+# Utilities for downloading packages
+FROM ${BASE_IMAGE} as downloader
+# Bump the date to current to refresh curl/certificates/etc
+RUN echo "2023.07.20"
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        apt-utils \
-        autoconf \
-        bc \
-        build-essential \
-        bzip2 \
-        ca-certificates \
-        curl \
-        cython3 \
-        dc \
-        file \
-        freeglut3-dev \
-        g++ \
-        gcc \
-        git \
-        gnupg-agent \
-        imagemagick \
-        libboost-all-dev \
-        libeigen3-dev \
-        libfftw3-dev libtiff5-dev \
-        libfontconfig1 \
-        libfreetype6 \
-        libgl1-mesa-dev \
-        libglu1-mesa-dev \
-        libgomp1 \
-        libice6 \
-        libopenblas-base \
-        libqt5opengl5-dev \
-        libqt5svg5* \
-        libtool \
-        libxcursor1 \
-        libxft2 \
-        libxinerama1 \
-        libxrandr2 \
-        libxrender1 \
-        libxt6 \
-        make \
-        mesa-utils \
-        pkg-config \
-        python \
-        python-numpy \
-        software-properties-common \
-        unzip \
-        wget \
-        xvfb \
-        zlib1g \
-        zlib1g-dev \
-        && \
-    curl -sL https://deb.nodesource.com/setup_17.x | bash - && \
-    apt-get install -y --no-install-recommends \
-        nodejs && \
+                    binutils \
+                    bzip2 \
+                    ca-certificates \
+                    curl \
+                    unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-ENV OS="Linux" \
-    FIX_VERTEX_AREA=""
-
-# Install miniconda
-RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-py310_23.10.0-1-Linux-x86_64.sh && \
-    bash Miniconda3-py310_23.10.0-1-Linux-x86_64.sh -b -p /usr/local/miniconda && \
-    rm Miniconda3-py310_23.10.0-1-Linux-x86_64.sh
-
-# Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
-ENV PATH="/usr/local/miniconda/bin:$PATH" \
-    CPATH="/usr/local/miniconda/include:$CPATH" \
-    LANG="C.UTF-8" \
-    LC_ALL="C.UTF-8" \
-    PYTHONNOUSERSITE=1
-
-# Install basic Python dependencies for ASLPrep conda environment.
-# The ASLPrep Dockerfile will install more tailored dependencies.
-RUN conda install -y \
-        python=3.10 \
-        conda-build \
-        pip=23 \
-        graphviz=2.40.1 \
-        mkl=2021.2 \
-        mkl-service=2.3 \
-        libxml2=2.9.8 \
-        libxslt=1.1.32 ; \
-    sync && \
-    pip install \
-        matplotlib \
-        requests \
-        templateflow ; \
-    sync && \
-    chmod -R a+rX /usr/local/miniconda; sync && \
-    chmod +x /usr/local/miniconda/bin/*; sync && \
-    conda build purge-all; sync && \
-    conda clean -tipsy; sync
-
-# Precache fonts, set "Agg" as default backend for matplotlib
-RUN python -c "from matplotlib import font_manager" && \
-    sed -i 's/\(backend *: \).*$/\1Agg/g' $( python -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
-
-# Precache commonly-used templates
-RUN python -c "from templateflow import api as tfapi; \
-               tfapi.get(['MNI152NLin2009cAsym', 'MNI152NLin6Asym'], atlas=None, resolution=[1, 2], desc=['brain', None], extension=['.nii', '.nii.gz']); \
-               tfapi.get('OASIS30ANTs', extension=['.nii', '.nii.gz']);" && \
-    find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
-    find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
-
-# Install FSL from old ASLPrep version
-# Based on https://github.com/ReproNim/neurodocker/blob/a87693e5676e7c4d272bc4eb8285f9232860d0ff/neurodocker/templates/fsl.yaml
-RUN curl -fsSL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/releases/fslinstaller.py | python3 - -d /opt/fsl-6.0.7.1 -V 6.0.7.1
-ENV FSLDIR="/opt/fsl-6.0.7.1" \
-    PATH="$PATH:/opt/fsl-6.0.7.1/bin" \
-    FSLOUTPUTTYPE="NIFTI_GZ" \
-    FSLMULTIFILEQUIT="TRUE" \
-    FSLTCLSH="/opt/fsl-6.0.7.1/bin/fsltclsh" \
-    FSLWISH="/opt/fsl-6.0.7.1/bin/fslwish" \
-    FSLLOCKDIR="" \
-    FSLMACHINELIST="" \
-    FSLREMOTECALL="" \
-    FSLGECUDAQ="cuda.q"
-
-# Install Neurodebian packages (AFNI, Connectome Workbench, git)
-RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
-    apt-key add /usr/local/etc/neurodebian.gpg && \
-    (apt-key adv --refresh-keys --keyserver hkp://ha.pool.sks-keyservers.net 0xA5D32F012649A5A9 || true)
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        afni=18.0.05+git24-gb25b21054~dfsg.1-1~nd17.10+1+nd18.04+1 \
-        connectome-workbench=1.5.0-1~nd18.04+1 \
-        git-annex-standalone && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Configure AFNI
-ENV AFNI_MODELPATH="/usr/lib/afni/models" \
-    AFNI_IMSAVE_WARNINGS="NO" \
-    AFNI_TTATLAS_DATASET="/usr/share/afni/atlases" \
-    AFNI_PLUGINPATH="/usr/lib/afni/plugins"
-
-ENV PATH="/usr/lib/afni/bin:$PATH"
 
 # FreeSurfer 7.3.2
+FROM downloader as freesurfer
 COPY docker/files/freesurfer7.3.2-exclude.txt /usr/local/etc/freesurfer7.3.2-exclude.txt
 RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/freesurfer-linux-ubuntu22_amd64-7.3.2.tar.gz \
-    | tar zxv --no-same-owner -C /opt --exclude-from=/usr/local/etc/freesurfer7.3.2-exclude.txt
+     | tar zxv --no-same-owner -C /opt --exclude-from=/usr/local/etc/freesurfer7.3.2-exclude.txt
 
-ENV FSF_OUTPUT_FORMAT="nii.gz" \
+# AFNI
+FROM downloader as afni
+# Bump the date to current to update AFNI
+RUN echo "2023.07.20"
+RUN mkdir -p /opt/afni-latest \
+    && curl -fsSL --retry 5 https://afni.nimh.nih.gov/pub/dist/tgz/linux_openmp_64.tgz \
+    | tar -xz -C /opt/afni-latest --strip-components 1 \
+    --exclude "linux_openmp_64/*.gz" \
+    --exclude "linux_openmp_64/funstuff" \
+    --exclude "linux_openmp_64/shiny" \
+    --exclude "linux_openmp_64/afnipy" \
+    --exclude "linux_openmp_64/lib/RetroTS" \
+    --exclude "linux_openmp_64/lib_RetroTS" \
+    --exclude "linux_openmp_64/meica.libs"
+
+# Connectome Workbench 1.5.0
+FROM downloader as workbench
+RUN mkdir /opt/workbench && \
+    curl -sSLO https://www.humanconnectome.org/storage/app/media/workbench/workbench-linux64-v1.5.0.zip && \
+    unzip workbench-linux64-v1.5.0.zip -d /opt && \
+    rm workbench-linux64-v1.5.0.zip && \
+    rm -rf /opt/workbench/libs_linux64_software_opengl /opt/workbench/plugins_linux64 && \
+    strip --remove-section=.note.ABI-tag /opt/workbench/libs_linux64/libQt5Core.so.5
+
+# Convert3d 1.4.0
+FROM downloader as c3d
+RUN mkdir /opt/convert3d && \
+    curl -fsSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/Experimental/c3d-1.4.0-Linux-gcc64.tar.gz/download \
+    | tar -xz -C /opt/convert3d --strip-components 1
+
+# Micromamba
+FROM downloader as micromamba
+
+# Install a C compiler to build extensions when needed.
+# traits<6.4 wheels are not available for Python 3.11+, but build easily.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+WORKDIR /
+# Bump the date to current to force update micromamba
+RUN echo "2024.02.06"
+RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+
+ENV MAMBA_ROOT_PREFIX="/opt/conda"
+COPY env.yml /tmp/env.yml
+COPY requirements.txt /tmp/requirements.txt
+WORKDIR /tmp
+RUN micromamba create -y -f /tmp/env.yml && \
+    micromamba clean -y -a
+
+# UV_USE_IO_URING for apparent race-condition (https://github.com/nodejs/node/issues/48444)
+# Check if this is still necessary when updating the base image.
+ENV PATH="/opt/conda/envs/aslprep/bin:$PATH" \
+    UV_USE_IO_URING=0
+RUN npm install -g svgo@^3.2.0 bids-validator@^1.14.0 && \
+    rm -r ~/.npm
+
+#
+# Main stage
+#
+FROM ${BASE_IMAGE} as aslprep
+
+# Configure apt
+ENV DEBIAN_FRONTEND="noninteractive" \
+    LANG="en_US.UTF-8" \
+    LC_ALL="en_US.UTF-8"
+
+# Some baseline tools; bc is needed for FreeSurfer, so don't drop it
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+                    bc \
+                    ca-certificates \
+                    curl \
+                    git \
+                    gnupg \
+                    lsb-release \
+                    netbase \
+                    xvfb && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Configure PPAs for libpng12 and libxp6
+RUN GNUPGHOME=/tmp gpg --keyserver hkps://keyserver.ubuntu.com --no-default-keyring --keyring /usr/share/keyrings/linuxuprising.gpg --recv 0xEA8CACC073C3DB2A \
+    && GNUPGHOME=/tmp gpg --keyserver hkps://keyserver.ubuntu.com --no-default-keyring --keyring /usr/share/keyrings/zeehio.gpg --recv 0xA1301338A3A48C4A \
+    && echo "deb [signed-by=/usr/share/keyrings/linuxuprising.gpg] https://ppa.launchpadcontent.net/linuxuprising/libpng12/ubuntu jammy main" > /etc/apt/sources.list.d/linuxuprising.list \
+    && echo "deb [signed-by=/usr/share/keyrings/zeehio.gpg] https://ppa.launchpadcontent.net/zeehio/libxp/ubuntu jammy main" > /etc/apt/sources.list.d/zeehio.list
+
+# Dependencies for AFNI; requires a discontinued multiarch-support package from bionic (18.04)
+RUN apt-get update -qq \
+    && apt-get install -y -q --no-install-recommends \
+           ed \
+           gsl-bin \
+           libglib2.0-0 \
+           libglu1-mesa-dev \
+           libglw1-mesa \
+           libgomp1 \
+           libjpeg62 \
+           libpng12-0 \
+           libxm4 \
+           libxp6 \
+           netpbm \
+           tcsh \
+           xfonts-base \
+           xvfb \
+    && curl -sSL --retry 5 -o /tmp/multiarch.deb http://archive.ubuntu.com/ubuntu/pool/main/g/glibc/multiarch-support_2.27-3ubuntu1.5_amd64.deb \
+    && dpkg -i /tmp/multiarch.deb \
+    && rm /tmp/multiarch.deb \
+    && apt-get install -f \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && gsl2_path="$(find / -name 'libgsl.so.19' || printf '')" \
+    && if [ -n "$gsl2_path" ]; then \
+         ln -sfv "$gsl2_path" "$(dirname $gsl2_path)/libgsl.so.0"; \
+    fi \
+    && ldconfig
+
+# Install files from stages
+COPY --from=freesurfer /opt/freesurfer /opt/freesurfer
+COPY --from=afni /opt/afni-latest /opt/afni-latest
+COPY --from=workbench /opt/workbench /opt/workbench
+COPY --from=c3d /opt/convert3d/bin/c3d_affine_tool /usr/bin/c3d_affine_tool
+
+# Simulate SetUpFreeSurfer.sh
+ENV OS="Linux" \
+    FS_OVERRIDE=0 \
+    FIX_VERTEX_AREA="" \
+    FSF_OUTPUT_FORMAT="nii.gz" \
     FREESURFER_HOME="/opt/freesurfer"
-
 ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
     FUNCTIONALS_DIR="$FREESURFER_HOME/sessions" \
     MNI_DIR="$FREESURFER_HOME/mni" \
@@ -163,54 +192,86 @@ ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
     MINC_BIN_DIR="$FREESURFER_HOME/mni/bin" \
     MINC_LIB_DIR="$FREESURFER_HOME/mni/lib" \
     MNI_DATAPATH="$FREESURFER_HOME/mni/data"
-
 ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
 
-# Install ANTs latest from source
-ENV ANTSPATH=/usr/lib/ants
-RUN mkdir -p $ANTSPATH && \
-    curl -sSL "https://dl.dropbox.com/s/gwf51ykkk5bifyj/ants-Linux-centos6_x86_64-v2.3.4.tar.gz" \
-    | tar -xzC $ANTSPATH --strip-components 1
-ENV PATH=$ANTSPATH:$PATH
+# AFNI config
+ENV PATH="/opt/afni-latest:$PATH" \
+    AFNI_IMSAVE_WARNINGS="NO" \
+    AFNI_PLUGINPATH="/opt/afni-latest"
 
-# Install Convert3D
-RUN echo "Downloading C3D ..." \
-    && mkdir /opt/c3d \
-    && curl -sSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/1.0.0/c3d-1.0.0-Linux-x86_64.tar.gz/download \
-    | tar -xzC /opt/c3d --strip-components=1
-ENV C3DPATH=/opt/c3d/bin \
-    PATH=/opt/c3d/bin:$PATH
+# Workbench config
+ENV PATH="/opt/workbench/bin_linux64:$PATH" \
+    LD_LIBRARY_PATH="/opt/workbench/lib_linux64:$LD_LIBRARY_PATH"
 
-# MSM HOCR (Nov 19, 2019 release)
-RUN curl -L -H "Accept: application/octet-stream" https://api.github.com/repos/ecr05/MSM_HOCR/releases/assets/16253707 -o /usr/local/bin/msm \
-    && chmod +x /usr/local/bin/msm
+# Create a shared $HOME directory
+RUN useradd -m -s /bin/bash -G users aslprep
+WORKDIR /home/aslprep
+ENV HOME="/home/aslprep" \
+    LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
 
-# Install SVGO
-RUN npm install -g svgo
+COPY --from=micromamba /bin/micromamba /bin/micromamba
+COPY --from=micromamba /opt/conda/envs/aslprep /opt/conda/envs/aslprep
 
-# Install bids-validator
-RUN npm install -g bids-validator@1.8.4
+ENV MAMBA_ROOT_PREFIX="/opt/conda"
+RUN micromamba shell init -s bash && \
+    echo "micromamba activate aslprep" >> $HOME/.bashrc
+ENV PATH="/opt/conda/envs/aslprep/bin:$PATH" \
+    CPATH="/opt/conda/envs/aslprep/include:$CPATH" \
+    LD_LIBRARY_PATH="/opt/conda/envs/aslprep/lib:$LD_LIBRARY_PATH"
+
+# Precaching atlases
+COPY scripts/fetch_templates.py fetch_templates.py
+RUN python fetch_templates.py && \
+    rm fetch_templates.py && \
+    find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
+    find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
+
+# FSL environment
+ENV LANG="C.UTF-8" \
+    LC_ALL="C.UTF-8" \
+    PYTHONNOUSERSITE=1 \
+    FSLDIR="/opt/conda/envs/aslprep" \
+    FSLOUTPUTTYPE="NIFTI_GZ" \
+    FSLMULTIFILEQUIT="TRUE" \
+    FSLLOCKDIR="" \
+    FSLMACHINELIST="" \
+    FSLREMOTECALL="" \
+    FSLGECUDAQ="cuda.q"
 
 # Unless otherwise specified each process should only use one thread - nipype
 # will handle parallelization
 ENV MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1
 
-# Create a shared $HOME directory
-RUN useradd -m -s /bin/bash -G users aslprep
-WORKDIR /home/aslprep
-ENV HOME="/home/aslprep"
+# MSM HOCR (Nov 19, 2019 release)
+RUN curl -L -H "Accept: application/octet-stream" https://api.github.com/repos/ecr05/MSM_HOCR/releases/assets/16253707 -o /usr/local/bin/msm \
+    && chmod +x /usr/local/bin/msm
 
-# Install pandoc (for HTML/LaTeX reports)
-RUN curl -o pandoc-2.2.2.1-1-amd64.deb -sSL "https://github.com/jgm/pandoc/releases/download/2.2.2.1/pandoc-2.2.2.1-1-amd64.deb" && \
-    dpkg -i pandoc-2.2.2.1-1-amd64.deb && \
-    rm pandoc-2.2.2.1-1-amd64.deb
+# Installing ASLPrep
+COPY --from=src /src/dist/*.whl .
+RUN pip install --no-cache-dir $( ls *.whl )[container,test]
 
 RUN find $HOME -type d -exec chmod go=u {} + && \
     find $HOME -type f -exec chmod go=u {} + && \
     rm -rf $HOME/.npm $HOME/.conda $HOME/.empty
 
+# For detecting the container
+ENV IS_DOCKER_8395080871=1
+
 RUN ldconfig
-WORKDIR /tmp/
+WORKDIR /tmp
+ENTRYPOINT ["/opt/conda/envs/aslprep/bin/aslprep"]
+
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.name="ASLPrep" \
+      org.label-schema.description="ASLPrep - robust ASL preprocessing tool" \
+      org.label-schema.url="https://aslprep.readthedocs.io" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url="https://github.com/PennLINC/aslprep" \
+      org.label-schema.version=$VERSION \
+      org.label-schema.schema-version="1.0"
