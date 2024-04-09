@@ -1,5 +1,5 @@
 FROM pennlinc/atlaspack:0.1.0 as atlaspack
-FROM ubuntu:bionic-20220531
+FROM ubuntu:jammy-20240125
 
 # Pre-cache neurodebian key
 COPY docker/files/neurodebian.gpg /usr/local/etc/neurodebian.gpg
@@ -148,27 +148,10 @@ ENV AFNI_MODELPATH="/usr/lib/afni/models" \
 
 ENV PATH="/usr/lib/afni/bin:$PATH"
 
-# Install FreeSurfer
-# Only grab elements we need for ASLPrep
-RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/freesurfer-linux-ubuntu22_amd64-7.3.2.tar.gz | tar zxv --no-same-owner -C /opt \
-    --exclude="freesurfer/diffusion" \
-    --exclude="freesurfer/docs" \
-    --exclude="freesurfer/fsfast" \
-    --exclude="freesurfer/lib/cuda" \
-    --exclude="freesurfer/lib/qt" \
-    --exclude="freesurfer/matlab" \
-    --exclude="freesurfer/mni/share/man" \
-    --exclude="freesurfer/subjects/fsaverage_sym" \
-    --exclude="freesurfer/subjects/fsaverage3" \
-    --exclude="freesurfer/subjects/fsaverage4" \
-    --exclude="freesurfer/subjects/cvs_avg35" \
-    --exclude="freesurfer/subjects/cvs_avg35_inMNI152" \
-    --exclude="freesurfer/subjects/bert" \
-    --exclude="freesurfer/subjects/lh.EC_average" \
-    --exclude="freesurfer/subjects/rh.EC_average" \
-    --exclude="freesurfer/subjects/sample-*.mgz" \
-    --exclude="freesurfer/subjects/V1_average" \
-    --exclude="freesurfer/trctrain"
+# FreeSurfer 7.3.2
+COPY docker/files/freesurfer7.3.2-exclude.txt /usr/local/etc/freesurfer7.3.2-exclude.txt
+RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/freesurfer-linux-ubuntu22_amd64-7.3.2.tar.gz \
+    | tar zxv --no-same-owner -C /opt --exclude-from=/usr/local/etc/freesurfer7.3.2-exclude.txt
 
 ENV FSF_OUTPUT_FORMAT="nii.gz" \
     FREESURFER_HOME="/opt/freesurfer"
