@@ -32,8 +32,6 @@ FROM python:slim AS src
 RUN pip install build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git
-COPY . /src
-RUN python -m build /src
 
 #
 # Download stages
