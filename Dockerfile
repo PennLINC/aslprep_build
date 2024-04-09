@@ -218,13 +218,6 @@ ENV PATH="/opt/conda/envs/aslprep/bin:$PATH" \
     CPATH="/opt/conda/envs/aslprep/include:$CPATH" \
     LD_LIBRARY_PATH="/opt/conda/envs/aslprep/lib:$LD_LIBRARY_PATH"
 
-# Precaching atlases
-COPY scripts/fetch_templates.py fetch_templates.py
-RUN python fetch_templates.py && \
-    rm fetch_templates.py && \
-    find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
-    find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
-
 # FSL environment
 ENV LANG="C.UTF-8" \
     LC_ALL="C.UTF-8" \
@@ -259,7 +252,6 @@ ENV IS_DOCKER_8395080871=1
 
 RUN ldconfig
 WORKDIR /tmp
-ENTRYPOINT ["/opt/conda/envs/aslprep/bin/aslprep"]
 
 ARG BUILD_DATE
 ARG VCS_REF
