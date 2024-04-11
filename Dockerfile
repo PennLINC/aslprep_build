@@ -22,9 +22,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM pennlinc/atlaspack:0.1.0 as atlaspack
 # Ubuntu 22.04 LTS - Jammy
 ARG BASE_IMAGE=ubuntu:jammy-20240125
+
+FROM pennlinc/atlaspack:0.1.0 as atlaspack
 
 #
 # Build wheel
