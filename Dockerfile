@@ -176,6 +176,13 @@ COPY --from=afni /opt/afni-latest /opt/afni-latest
 COPY --from=workbench /opt/workbench /opt/workbench
 COPY --from=c3d /opt/convert3d/bin/c3d_affine_tool /usr/bin/c3d_affine_tool
 
+# Download atlases from AtlasPack
+RUN mkdir /AtlasPack
+COPY --from=atlaspack /AtlasPack/tpl-fsLR_*.dlabel.nii /AtlasPack/
+COPY --from=atlaspack /AtlasPack/tpl-MNI152NLin6Asym_*.nii.gz /AtlasPack/
+COPY --from=atlaspack /AtlasPack/atlas-4S*.tsv /AtlasPack/
+COPY --from=atlaspack /AtlasPack/*.json /AtlasPack/
+
 # Simulate SetUpFreeSurfer.sh
 ENV OS="Linux" \
     FS_OVERRIDE=0 \
