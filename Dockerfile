@@ -172,6 +172,20 @@ RUN apt-get update -qq \
     fi \
     && ldconfig
 
+# Install FSL from old ASLPrep version
+# Based on https://github.com/ReproNim/neurodocker/blob/a87693e5676e7c4d272bc4eb8285f9232860d0ff/neurodocker/templates/fsl.yaml
+RUN curl -fsSL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/releases/fslinstaller.py | python3 - -d /opt/fsl-6.0.7.1 -V 6.0.7.1
+ENV FSLDIR="/opt/fsl-6.0.7.1" \
+    PATH="$PATH:/opt/fsl-6.0.7.1/bin" \
+    FSLOUTPUTTYPE="NIFTI_GZ" \
+    FSLMULTIFILEQUIT="TRUE" \
+    FSLTCLSH="/opt/fsl-6.0.7.1/bin/fsltclsh" \
+    FSLWISH="/opt/fsl-6.0.7.1/bin/fslwish" \
+    FSLLOCKDIR="" \
+    FSLMACHINELIST="" \
+    FSLREMOTECALL="" \
+    FSLGECUDAQ="cuda.q"
+
 # Install files from stages
 COPY --from=freesurfer /opt/freesurfer /opt/freesurfer
 COPY --from=afni /opt/afni-latest /opt/afni-latest
