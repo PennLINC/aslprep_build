@@ -241,18 +241,6 @@ ENV PATH="/opt/conda/envs/aslprep/bin:$PATH" \
     CPATH="/opt/conda/envs/aslprep/include:$CPATH" \
     LD_LIBRARY_PATH="/opt/conda/envs/aslprep/lib:$LD_LIBRARY_PATH"
 
-# FSL environment
-ENV LANG="C.UTF-8" \
-    LC_ALL="C.UTF-8" \
-    PYTHONNOUSERSITE=1 \
-    FSLDIR="/opt/conda/envs/aslprep" \
-    FSLOUTPUTTYPE="NIFTI_GZ" \
-    FSLMULTIFILEQUIT="TRUE" \
-    FSLLOCKDIR="" \
-    FSLMACHINELIST="" \
-    FSLREMOTECALL="" \
-    FSLGECUDAQ="cuda.q"
-
 # Unless otherwise specified each process should only use one thread - nipype
 # will handle parallelization
 ENV MKL_NUM_THREADS=1 \
