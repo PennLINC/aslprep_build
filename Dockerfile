@@ -100,6 +100,7 @@ RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bi
 
 ENV MAMBA_ROOT_PREFIX="/opt/conda"
 COPY env.yml /tmp/env.yml
+COPY requirements.txt /tmp/requirements.txt
 WORKDIR /tmp
 RUN micromamba create -y -f /tmp/env.yml && \
     micromamba clean -y -a
