@@ -24,17 +24,7 @@
 
 # Ubuntu 22.04 LTS - Jammy
 ARG BASE_IMAGE=ubuntu:jammy-20240125
-
 FROM pennlinc/atlaspack:0.1.0 as atlaspack
-
-#
-# Build wheel
-#
-FROM python:slim AS src
-RUN pip install build
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git
-
 #
 # Download stages
 #
@@ -71,7 +61,13 @@ RUN mkdir -p /opt/afni-latest \
     --exclude "linux_openmp_64/afnipy" \
     --exclude "linux_openmp_64/lib/RetroTS" \
     --exclude "linux_openmp_64/lib_RetroTS" \
-    --exclude "linux_openmp_64/meica.libs"
+    --exclude "linux_openmp_64/meica.libs" \
+    # Keep only what we use
+    && find /opt/afni-latest -type f -not \( \
+        -name "3dTshift" -or \
+        -name "3dUnifize" -or \
+        -name "3dAutomask" -or \
+        -name "3dvolreg" \) -delete
 
 # Connectome Workbench 1.5.0
 FROM downloader as workbench
@@ -104,6 +100,7 @@ RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bi
 
 ENV MAMBA_ROOT_PREFIX="/opt/conda"
 COPY env.yml /tmp/env.yml
+COPY requirements.txt /tmp/requirements.txt
 WORKDIR /tmp
 RUN micromamba create -y -f /tmp/env.yml && \
     micromamba clean -y -a
@@ -172,20 +169,6 @@ RUN apt-get update -qq \
     fi \
     && ldconfig
 
-# Install FSL from old ASLPrep version
-# Based on https://github.com/ReproNim/neurodocker/blob/a87693e5676e7c4d272bc4eb8285f9232860d0ff/neurodocker/templates/fsl.yaml
-RUN curl -fsSL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/releases/fslinstaller.py | python3 - -d /opt/fsl-6.0.7.1 -V 6.0.7.1
-ENV FSLDIR="/opt/fsl-6.0.7.1" \
-    PATH="$PATH:/opt/fsl-6.0.7.1/bin" \
-    FSLOUTPUTTYPE="NIFTI_GZ" \
-    FSLMULTIFILEQUIT="TRUE" \
-    FSLTCLSH="/opt/fsl-6.0.7.1/bin/fsltclsh" \
-    FSLWISH="/opt/fsl-6.0.7.1/bin/fslwish" \
-    FSLLOCKDIR="" \
-    FSLMACHINELIST="" \
-    FSLREMOTECALL="" \
-    FSLGECUDAQ="cuda.q"
-
 # Install files from stages
 COPY --from=freesurfer /opt/freesurfer /opt/freesurfer
 COPY --from=afni /opt/afni-latest /opt/afni-latest
@@ -240,6 +223,25 @@ RUN micromamba shell init -s bash && \
 ENV PATH="/opt/conda/envs/aslprep/bin:$PATH" \
     CPATH="/opt/conda/envs/aslprep/include:$CPATH" \
     LD_LIBRARY_PATH="/opt/conda/envs/aslprep/lib:$LD_LIBRARY_PATH"
+
+# Precaching atlases
+COPY scripts/fetch_templates.py fetch_templates.py
+RUN python fetch_templates.py && \
+    rm fetch_templates.py && \
+    find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
+    find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
+
+# FSL environment
+ENV LANG="C.UTF-8" \
+    LC_ALL="C.UTF-8" \
+    PYTHONNOUSERSITE=1 \
+    FSLDIR="/opt/conda/envs/aslprep" \
+    FSLOUTPUTTYPE="NIFTI_GZ" \
+    FSLMULTIFILEQUIT="TRUE" \
+    FSLLOCKDIR="" \
+    FSLMACHINELIST="" \
+    FSLREMOTECALL="" \
+    FSLGECUDAQ="cuda.q"
 
 # Unless otherwise specified each process should only use one thread - nipype
 # will handle parallelization
