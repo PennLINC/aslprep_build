@@ -109,8 +109,14 @@ RUN micromamba create -y -f /tmp/env.yml && \
 # Check if this is still necessary when updating the base image.
 ENV PATH="/opt/conda/envs/aslprep/bin:$PATH" \
     UV_USE_IO_URING=0
-RUN npm install -g svgo@^3.2.0 bids-validator@^1.14.0 && \
+RUN npm install -g svgo@^3.2.0 && \
     rm -r ~/.npm
+
+# Install deno + bids-validator
+RUN curl -fsSL https://deno.land/install.sh | sh && \
+    export DENO_INSTALL="/root/.deno" && \
+    export PATH="$DENO_INSTALL/bin:$PATH" && \
+    deno install -Agf -n bids-validator jsr:@bids/validator@1.15.0
 
 #
 # Main stage
