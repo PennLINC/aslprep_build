@@ -45,16 +45,7 @@ RUN apt-get update && \
 
 # FreeSurfer 7.3.2
 # Don't invalidate the build cache here by using downloader
-FROM ${BASE_IMAGE} as freesurfer732
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-                    binutils \
-                    bzip2 \
-                    ca-certificates \
-                    curl \
-                    unzip && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
+FROM downloader as freesurfer732
 COPY docker/files/freesurfer7.3.2-exclude.txt /usr/local/etc/freesurfer7.3.2-exclude.txt
 RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/freesurfer-linux-ubuntu22_amd64-7.3.2.tar.gz \
      | tar zxv --no-same-owner -C /opt --exclude-from=/usr/local/etc/freesurfer7.3.2-exclude.txt
