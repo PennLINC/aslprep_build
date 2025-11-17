@@ -43,12 +43,10 @@ RUN apt-get update && \
                     unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# FreeSurfer 7.3.2
-# Don't invalidate the build cache here by using downloader
-FROM downloader as freesurfer732
+# FreeSurfer 7.3.2 for everything but the synths
+FROM freesurfer/freesurfer:7.3.2 as freesurfer732
 COPY docker/files/freesurfer7.3.2-exclude.txt /usr/local/etc/freesurfer7.3.2-exclude.txt
-RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/freesurfer-linux-ubuntu22_amd64-7.3.2.tar.gz \
-     | tar zxv --no-same-owner -C /opt --exclude-from=/usr/local/etc/freesurfer7.3.2-exclude.txt
+RUN cd /usr/local && while read -r line; do rm -rf $line; done < /usr/local/etc/freesurfer7.3.2-exclude.txt
 
 # AFNI
 FROM downloader as afni
@@ -178,7 +176,7 @@ RUN apt-get update -qq \
     && ldconfig
 
 # Install files from stages
-COPY --from=freesurfer732 /opt/freesurfer /opt/freesurfer
+COPY --from=freesurfer732 /usr/local/freesurfer /opt/freesurfer
 COPY --from=freesurfer \
   /usr/local/freesurfer/python/scripts/mri_synthseg  \
   /opt/freesurfer/bin/mri_synthseg
