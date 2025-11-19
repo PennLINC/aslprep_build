@@ -67,6 +67,7 @@ RUN mkdir -p /opt/afni-latest \
         -name "3dTshift" -or \
         -name "3dUnifize" -or \
         -name "3dAutomask" -or \
+        -name "3dAutobox" -or \
         -name "3dresample" -or \
         -name "3dvolreg" \) -delete
 
