@@ -69,6 +69,7 @@ RUN mkdir -p /opt/afni-latest \
         -name "3dAutomask" -or \
         -name "3dAutobox" -or \
         -name "3dresample" -or \
+        -name "3dZeropad" -or \
         -name "3dvolreg" \) -delete
 
 # Connectome Workbench 1.5.0
