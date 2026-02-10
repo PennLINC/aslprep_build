@@ -98,8 +98,13 @@ RUN apt-get update && \
 
 WORKDIR /
 # Bump the date to current to force update micromamba
-RUN echo "2024.02.06"
-RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+RUN echo "2025.02.10"
+# Use GitHub releases (micro.mamba.pm can return incomplete/corrupt data when piped)
+ARG MICROMAMBA_VERSION=2.5.0-1
+RUN curl -fsSL -o /tmp/micromamba.tar.bz2 \
+    "https://github.com/mamba-org/micromamba-releases/releases/download/${MICROMAMBA_VERSION}/micromamba-linux-64.tar.bz2" && \
+    tar -xvjf /tmp/micromamba.tar.bz2 -C / bin/micromamba && \
+    rm /tmp/micromamba.tar.bz2
 
 ENV MAMBA_ROOT_PREFIX="/opt/conda"
 COPY env.yml /tmp/env.yml
@@ -132,6 +137,7 @@ ENV DEBIAN_FRONTEND="noninteractive" \
     LC_ALL="en_US.UTF-8"
 
 # Some baseline tools; bc is needed for FreeSurfer, so don't drop it
+# libopenblas-dev for msm
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
                     bc \
@@ -139,6 +145,7 @@ RUN apt-get update && \
                     curl \
                     git \
                     gnupg \
+                    libopenblas-dev \
                     lsb-release \
                     netbase \
                     xvfb && \
